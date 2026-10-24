@@ -35,3 +35,8 @@ build/
 ### Configuración local y credenciales ###
 .env
 *.local.yml
+
+### Documentos de Office (se entregan fuera del repositorio) ###
+*.docx
+*.xlsx
+~$*
