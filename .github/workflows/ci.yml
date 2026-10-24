@@ -1,0 +1,26 @@
+# Integración continua: compila con lint de javac y ejecuta todas las pruebas (H2, sin Docker).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Compilar y probar
+        # chmod: desde Windows el bit de ejecución de mvnw puede no quedar registrado en git.
+        run: |
+          chmod +x mvnw
+          ./mvnw -B verify

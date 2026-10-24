@@ -1,0 +1,97 @@
+Ejecución de pruebas automáticas — ./mvnw test — 2026-10-22 15:21
+
+Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 13.15 s -- in co.sierraalta.production.auth.AuthenticationFlowTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in co.sierraalta.production.auth.domain.RoleCodeTest
+Tests run: 53, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.690 s -- in co.sierraalta.production.auth.RoleScopeTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.685 s -- in co.sierraalta.production.auth.UserAdministrationTest
+Tests run: 88, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+
+APROBADO  auth.AuthenticationFlowTest.csrfRejectionIsAuditedApartFromRoleDenials
+APROBADO  auth.AuthenticationFlowTest.loginWithoutCsrfTokenIsRejected
+APROBADO  auth.AuthenticationFlowTest.successfulLoginReturnsRoleAndScope
+APROBADO  auth.AuthenticationFlowTest.passwordsAreStoredAsAdaptiveHash
+APROBADO  auth.AuthenticationFlowTest.unknownUserGetsTheSameResponseAsWrongPassword
+APROBADO  auth.AuthenticationFlowTest.inactiveAccountCannotLogIn
+APROBADO  auth.AuthenticationFlowTest.oversizedUsernameIsReportedInSpanish
+APROBADO  auth.AuthenticationFlowTest.malformedJsonGetsAReadableProblem
+APROBADO  auth.AuthenticationFlowTest.csrfHeaderThatDoesNotMatchTheCookieIsRejected
+APROBADO  auth.AuthenticationFlowTest.wrongPasswordIsRejectedWithGenericMessage
+APROBADO  auth.AuthenticationFlowTest.loginChangesTheSessionIdentifier
+APROBADO  auth.AuthenticationFlowTest.usernameIsCaseInsensitive
+APROBADO  auth.AuthenticationFlowTest.sessionGivesAccessToCurrentUserUntilLogout
+APROBADO  auth.AuthenticationFlowTest.csrfEndpointIssuesReadableCookieAndHeaderName
+APROBADO  auth.AuthenticationFlowTest.loginAttemptsAreAudited
+APROBADO  auth.AuthenticationFlowTest.blankCredentialsAreReportedPerField
+APROBADO  auth.domain.RoleCodeTest.supervisorOnlyReads
+APROBADO  auth.domain.RoleCodeTest.plannerReadsHistoryExecutesForecastsAndReadsIndicators
+APROBADO  auth.domain.RoleCodeTest.onlyAnalystCanWriteHistory
+APROBADO  auth.domain.RoleCodeTest.onlyAdminManagesAccounts
+APROBADO  auth.domain.RoleCodeTest.analystLoadsHistoryAndExecutesForecasts
+APROBADO  auth.domain.RoleCodeTest.adminOnlyManagesAccounts
+APROBADO  auth.RoleScopeTest.matrixCoversEveryRole
+APROBADO  auth.RoleScopeTest.undeclaredEndpointsAreDeniedByDefault
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[1]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[2]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[3]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[4]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[5]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[6]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[7]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[8]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[9]
+APROBADO  auth.RoleScopeTest.anonymousRequestsNeedASession(Endpoint)[10]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[1]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[2]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[3]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[4]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[5]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[6]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[7]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[8]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[9]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[10]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[11]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[12]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[13]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[14]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[15]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[16]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[17]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[18]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[19]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[20]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[21]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[22]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[23]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[24]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[25]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[26]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[27]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[28]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[29]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[30]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[31]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[32]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[33]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[34]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[35]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[36]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[37]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[38]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[39]
+APROBADO  auth.RoleScopeTest.eachRoleReachesOnlyItsScope(String, Endpoint)[40]
+APROBADO  auth.RoleScopeTest.deniedAccessReturnsProblemDetailAndIsAudited
+APROBADO  auth.UserAdministrationTest.roleChangeAppliesToTheOpenSessionImmediately
+APROBADO  auth.UserAdministrationTest.stateChangingRequestsRequireCsrfEvenWithASession
+APROBADO  auth.UserAdministrationTest.deactivatingAnAccountEndsItsOpenSession
+APROBADO  auth.UserAdministrationTest.adminCreatesAccountThatCanLogInWithItsRole
+APROBADO  auth.UserAdministrationTest.useCaseRequiresPermissionEvenOutsideTheHttpRoute
+APROBADO  auth.UserAdministrationTest.anotherAdminCanBeDeactivatedWhileOneRemains
+APROBADO  auth.UserAdministrationTest.invalidAccountDataIsReportedPerField
+APROBADO  auth.UserAdministrationTest.nonNumericIdIsAnInvalidParameter
+APROBADO  auth.UserAdministrationTest.adminCannotDeactivateOrDemoteThemselves
+APROBADO  auth.UserAdministrationTest.unknownAccountIsNotFound
+APROBADO  auth.UserAdministrationTest.rolesCatalogExposesEachScope
+APROBADO  auth.UserAdministrationTest.reactivatedAccountCanLogInAgain
+APROBADO  auth.UserAdministrationTest.duplicateUsernameIsAConflict

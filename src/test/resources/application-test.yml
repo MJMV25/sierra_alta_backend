@@ -1,0 +1,15 @@
+# Pruebas automáticas: H2 en memoria en modo PostgreSQL, con las mismas migraciones Flyway.
+spring:
+  datasource:
+    url: jdbc:h2:mem:sierra_alta_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+
+app:
+  bootstrap:
+    admin:
+      username: admin
+      password: admin-password-123
+    demo-users:
+      enabled: true
+      password: demo-password-123

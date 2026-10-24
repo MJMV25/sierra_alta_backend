@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: sierra-alta-backend
+  # Lee el archivo .env de la raíz si existe (útil al ejecutar desde IntelliJ). Las variables de
+  # entorno del sistema tienen prioridad sobre este archivo.
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sierra_alta}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # El esquema lo crea y versiona Flyway; Hibernate solo valida que las entidades coincidan.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+        # true en cualquier despliegue con HTTPS.
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  bootstrap:
+    admin:
+      username: ${BOOTSTRAP_ADMIN_USERNAME:}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    demo-users:
+      enabled: false
+      password: ${DEMO_USERS_PASSWORD:}
+
+---
+# Las migraciones usan una cuenta dueña del esquema (DDL) y la aplicación otra solo con DML.
+# Sin DB_MIGRATION_* Flyway usa la cuenta de la aplicación. No aplica a las pruebas: con una cuenta
+# propia Spring Boot abre un DataSource aparte para Flyway, y la base H2 en memoria se cierra con él.
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+  flyway:
+    user: ${DB_MIGRATION_USERNAME:${DB_USERNAME}}
+    password: ${DB_MIGRATION_PASSWORD:${DB_PASSWORD}}

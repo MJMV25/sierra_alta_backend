@@ -1,0 +1,32 @@
+Pruebas de API contra http://localhost:8081/api/v1 — 2026-10-22 15:21:04
+
+APROBADO  CP-016  Login del planeador (esperado 200)
+APROBADO  CP-016  La sesión informa el rol PLANNER (esperado PLANNER)
+APROBADO  CP-017  Contraseña incorrecta (esperado 401)
+APROBADO  CP-017  Usuario inexistente (esperado 401)
+APROBADO  CP-017  Mismo mensaje para usuario inexistente y clave errónea (esperado iguales)
+APROBADO  CP-023  Planeador consulta pronósticos (permitido; lógica pendiente) (esperado 501)
+APROBADO  CP-023  Planeador intenta administrar cuentas (esperado 403)
+APROBADO  CP-025  Supervisor intenta ejecutar un pronóstico (esperado 403)
+APROBADO  CP-025  La denegación usa el código access-denied (esperado access-denied)
+APROBADO  CP-023  Supervisor intenta cargar observaciones (esperado 403)
+APROBADO  CP-023  Analista carga observaciones (permitido; lógica pendiente) (esperado 501)
+APROBADO  CP-024  Administrador lista cuentas (esperado 200)
+APROBADO  CP-024  Administrador no hereda permisos de históricos (esperado 403)
+APROBADO  CP-027  Anónimo consulta pronósticos (esperado 401)
+APROBADO  CP-027  Anónimo consulta su sesión (esperado 401)
+APROBADO  CP-027  Ruta sin versión denegada (esperado 401)
+APROBADO  CP-028  Login sin cabecera CSRF (esperado 403)
+APROBADO  CP-028  Rechazo con código csrf-invalid (esperado csrf-invalid)
+APROBADO  CP-030  JSON malformado en el login (esperado 400)
+APROBADO  CP-030  Código malformed-request (esperado malformed-request)
+
+Casos cuya función aún no está implementada (se reintentan cuando exista):
+BLOQUEADO CP-001…009 Ejecutar pronóstico MA(2) y calcular MAD/MAPE (el servidor responde 501 Not Implemented)
+BLOQUEADO CP-031  Consultar productos (el servidor responde 501 Not Implemented)
+BLOQUEADO CP-032  Consultar indicadores de una ejecución (el servidor responde 501 Not Implemented)
+
+APROBADO  CP-019  Cierre de sesión (esperado 204)
+APROBADO  CP-019  Tras cerrar sesión /me ya no responde (esperado 401)
+
+Resultado: 22 verificaciones aprobadas, 0 fallidas, 3 bloqueadas

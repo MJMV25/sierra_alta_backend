@@ -1,0 +1,9 @@
+# Perfil de desarrollo local: activa las cuentas de demostración (planeador, supervisor, analista).
+app:
+  bootstrap:
+    demo-users:
+      enabled: true
+
+logging:
+  level:
+    co.sierraalta.production: DEBUG

@@ -1,0 +1,20 @@
+     tipo      | resultado | eventos 
+---------------+-----------+---------
+ ACCESS_DENIED | DENIED    |       8
+ CSRF_REJECTED | DENIED    |       2
+ LOGIN         | FAILURE   |       4
+ LOGIN         | SUCCESS   |       8
+ LOGOUT        | SUCCESS   |       2
+(5 rows)
+
+ nombre_usuario |    rol     | prefijo_hash | longitud 
+----------------+------------+--------------+----------
+ admin          | ADMIN      | {bcrypt}     |       68
+ planeador      | PLANNER    | {bcrypt}     |       68
+ supervisor     | SUPERVISOR | {bcrypt}     |       68
+ analista       | ANALYST    | {bcrypt}     |       68
+ analalista     | ANALYST    | {bcrypt}     |       68
+ supervisor2    | SUPERVISOR | {bcrypt}     |       68
+ planeador2     | PLANNER    | {bcrypt}     |       68
+(7 rows)
+

@@ -1,0 +1,30 @@
+# Base de datos local para desarrollo. Uso: docker compose up -d db
+# Las credenciales se leen de .env (copiar desde .env.example); no se versionan.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: sierra-alta-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sierra_alta}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      # Cuentas con privilegio mínimo que crea docker/postgres/initdb (migraciones y aplicación).
+      DB_MIGRATION_USERNAME: ${DB_MIGRATION_USERNAME:?Defina DB_MIGRATION_USERNAME en .env}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:?Defina DB_MIGRATION_PASSWORD en .env}
+      DB_APP_USERNAME: ${DB_USERNAME:?Defina DB_USERNAME en .env}
+      DB_APP_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sierra-alta-db-data:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sierra-alta-db-data:
