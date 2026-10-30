@@ -51,7 +51,11 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
 - **Medida** (17): se pronostica la producción como demanda, y la interfaz debe decir "producción".
 - **Periodicidad** (18): solo mensual para la empresa. Spokane (semanal) y ACME (trimestral) existen solo
   como casos de prueba automatizados, no como series de la base de datos.
-- **Carga** (19): el analista podrá agregar los datos de cada mes nuevo.
+- **Carga** (19): el analista agrega los datos de cada mes nuevo por la API. Como los métodos suponen
+  meses consecutivos, una serie nunca queda con huecos: la carga entra completa o se rechaza, sin meses
+  repetidos (409 si ya existían), sin meses futuros y sin dejar meses sin dato (`MonthlyLoadRules`).
+  Cada lote queda registrado en `carga` y su id es la versión de datos. Las cantidades reales no se
+  versionan en el repositorio ([docs/datos](../../datos/README.md)).
 - **Validación** (20): ambos equipos validan el motor con Spokane y ACME y firman las actas.
 - **Supervisores** (24): ven todas las referencias, en solo lectura.
 - **Exportación** (23): datos reales y pronosticados, periodo, referencia, método, parámetros,

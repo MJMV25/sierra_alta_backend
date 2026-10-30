@@ -80,7 +80,8 @@ verificar CP-025 "La denegación usa el código access-denied" access-denied "$(
 verificar CP-023 "Supervisor intenta cargar observaciones" 403 "$(estado "$TMP/sup" POST /history/series/1/observations)"
 
 sesion "$TMP/ana" analista "$CLAVE_DEMO" > /dev/null
-verificar CP-023 "Analista carga observaciones (permitido; lógica pendiente)" 501 "$(estado "$TMP/ana" POST /history/series/1/observations)"
+verificar CP-023 "Analista carga observaciones (permitido; lote vacío rechazado)" 400 "$(estado "$TMP/ana" POST /history/series/1/observations)"
+verificar CP-023 "El lote vacío se informa por campo" validation "$(codigo)"
 
 if [ -n "$ADMIN" ] && [ -n "$CLAVE_ADMIN" ]; then
 	sesion "$TMP/adm" "$ADMIN" "$CLAVE_ADMIN" > /dev/null
@@ -100,10 +101,12 @@ verificar CP-028 "Rechazo con código csrf-invalid" csrf-invalid "$(codigo)"
 verificar CP-030 "JSON malformado en el login" 400 "$(estado "$TMP/sin" POST /auth/login '{"username":')"
 verificar CP-030 "Código malformed-request" malformed-request "$(codigo)"
 
+verificar CP-031 "Consultar productos" 200 "$(estado "$TMP/plan" GET /history/products)"
+verificar CP-031 "El catálogo incluye Jersey Pro" si "$(grep -q "\"code\":\"JERSEY-PRO\"" "$TMP/respuesta.json" && echo si || echo no)"
+
 echo
 echo "Casos cuya función aún no está implementada (se reintentan cuando exista):"
 bloqueado "CP-001…009" "Ejecutar pronóstico MA(2) y calcular MAD/MAPE" "$(estado "$TMP/plan" POST /forecasts '{"seriesId":1,"window":2}')"
-bloqueado CP-031 "Consultar productos" "$(estado "$TMP/plan" GET /history/products)"
 bloqueado CP-032 "Consultar indicadores de una ejecución" "$(estado "$TMP/plan" GET /indicators/executions/1)"
 echo
 

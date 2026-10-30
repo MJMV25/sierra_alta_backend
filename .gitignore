@@ -40,3 +40,6 @@ build/
 *.docx
 *.xlsx
 ~$*
+
+### Datos reales de la empresa (se cargan por la API, ver docs/datos/README.md) ###
+datos-locales/

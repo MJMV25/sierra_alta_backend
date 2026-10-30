@@ -27,7 +27,8 @@ import org.springframework.mock.web.MockHttpSession;
 /**
  * Prueba de acceso directo por rol: cada rol contra cada endpoint protegido.
  *
- * <p>Permitido: el endpoint responde (200 en administración, 501 en módulos aún no implementados).
+ * <p>Permitido: el endpoint responde (200 en consultas; 400 en la carga, que se envía sin cuerpo; 501 en
+ * módulos aún no implementados).
  * Denegado: 403. Sin sesión: 401. La matriz replica la tabla 2 del documento de arquitectura.
  */
 class RoleScopeTest extends ApiIntegrationTest {
@@ -55,9 +56,9 @@ class RoleScopeTest extends ApiIntegrationTest {
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/users", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/roles", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/security-events", ADMIN_ONLY, 200),
-			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 501),
-			new Endpoint(HttpMethod.GET, "/api/v1/history/series/1/observations", READERS, 501),
-			new Endpoint(HttpMethod.POST, "/api/v1/history/series/1/observations", LOADERS, 501),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 200),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/series/1/observations", READERS, 200),
+			new Endpoint(HttpMethod.POST, "/api/v1/history/series/1/observations", LOADERS, 400),
 			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", EXECUTORS, 501),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 501),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/1", READERS, 501),

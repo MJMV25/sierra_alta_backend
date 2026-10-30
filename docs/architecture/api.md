@@ -73,13 +73,37 @@ Reglas de administración: no hay autorregistro; los nombres de usuario se guard
 desactivarse ni cambiarse el rol a sí mismo; siempre queda al menos un administrador activo; las
 cuentas no se eliminan, se desactivan.
 
-### history, forecast, indicators (contrato y permisos; responden 501)
+### history (funcional)
+
+| Método | Ruta                                          | Permiso         | Cuerpo / respuesta |
+|--------|-----------------------------------------------|-----------------|--------------------|
+| GET    | `/api/v1/history/products`                    | `history:read`  | → `[ProductSummary]` |
+| GET    | `/api/v1/history/series/{id}/observations`    | `history:read`  | → `SeriesObservations` (404 si no existe) |
+| POST   | `/api/v1/history/series/{id}/observations`    | `history:write` | `{observations: [{period, value}]}` → 201 `LoadSummary` |
+
+`ProductSummary`: `{ id, code, name, series: [{ id, measure, periodicity, unit, firstPeriod, lastPeriod,
+observations, dataVersion }] }`; solo referencias activas, ordenadas por nombre. Una serie sin datos trae
+`observations: 0` y periodos y `dataVersion` nulos.
+`SeriesObservations`: `{ seriesId, productCode, productName, measure, periodicity, unit, dataVersion,
+observations: [{ period: "2026-09", value: 155 }] }`, del mes más antiguo al más reciente.
+`LoadSummary`: `{ loadId, seriesId, observations, firstPeriod, lastPeriod, loadedAt }`.
+
+Los periodos usan el formato `AAAA-MM`. `dataVersion` es el id de la última carga de la serie: la
+"versión de datos" que acompañará a pronósticos y exportaciones. `measure` es `PRODUCCION` en las 4
+referencias: la interfaz debe rotularla como producción (ADR 07).
+
+Reglas de la carga (todo el lote o nada, [ADR 07](adr/0007-reglas-de-calculo.md)):
+
+| Caso | HTTP | `code` |
+|------|------|--------|
+| Lote vacío o con más de 240 meses; periodo que no es `AAAA-MM`; cantidad nula, negativa o con más de 4 decimales | 400 | `validation` (`errors[].field` como `observations[2].value`) |
+| Mes que ya tiene dato en la serie | 409 | `conflict` |
+| Mes repetido dentro del lote, mes posterior al mes en curso (hora de Colombia) o carga que dejaría meses sin dato | 422 | `business-rule` (el detalle nombra los meses) |
+
+### forecast, indicators (contrato y permisos; responden 501)
 
 | Método | Ruta                                       | Permiso             |
 |--------|--------------------------------------------|---------------------|
-| GET    | `/api/v1/history/products`                    | `history:read`      |
-| GET    | `/api/v1/history/series/{id}/observations`    | `history:read`      |
-| POST   | `/api/v1/history/series/{id}/observations`    | `history:write`     |
 | POST   | `/api/v1/forecasts`                           | `forecast:execute`  |
 | GET    | `/api/v1/forecasts`                           | `forecast:read`     |
 | GET    | `/api/v1/forecasts/{id}`                      | `forecast:read`     |

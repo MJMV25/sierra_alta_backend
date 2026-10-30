@@ -4,9 +4,10 @@ API REST del sistema web de pronóstico de producción (Sierra Alta S.A.S. BIC, 
 Monolito modular multicapa en **Java 21 + Spring Boot 4.1 + Spring Security 7 + PostgreSQL**.
 El frontend React + Vite vive en un repositorio/carpeta aparte y consume esta API.
 
-> Estado actual: **arquitectura completa, inicio de sesión y alcance por rol totalmente funcionales.**
-> Los módulos `history`, `forecast` e `indicators` tienen su esquema de base de datos y sus endpoints
-> protegidos por rol, que responden `501 Not Implemented` hasta que Ingeniería Industrial valide sus reglas.
+> Estado actual: **inicio de sesión, alcance por rol e históricos (fase 1) totalmente funcionales.**
+> Los cuatro métodos de pronóstico y los indicadores MAD/MAPE están implementados como dominio y
+> verificados contra el Excel corregido; los endpoints de `forecast` e `indicators` responden
+> `501 Not Implemented` hasta conectarlos con su caso de uso.
 
 ## Estructura
 
@@ -21,15 +22,18 @@ src/main/java/co/sierraalta/production
 │       ├── security/             SecurityConfig (matriz de autorización), sesión, CSRF, filtros
 │       ├── persistence/          Repositorios Spring Data
 │       └── bootstrap/            Creación del primer administrador y cuentas demo
-├── history/                      Productos, series y observaciones   (contrato + permisos)
-├── forecast/                     Coordinación de ejecuciones (Facade) (contrato + permisos)
-├── indicators/                   MAD y MAPE                           (contrato + permisos)
+├── history/                      Productos, series, observaciones y cargas  ← funcional
+├── forecast/                     4 métodos en domain/ (Strategy); caso de uso y endpoints pendientes
+├── indicators/                   MAD y MAPE en domain/; endpoint pendiente
 └── shared/                       Errores RFC 9457 (problem+json), CORS y prefijo /api/v1
 src/main/resources
 ├── application.yml / application-dev.yml
-└── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos (Flyway)
+└── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos ·
+                                  V3 cargas y catálogo de referencias (Flyway)
+src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel corregido
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
+docs/datos/                       Carga de los históricos reales por la API (no se versionan)
 .github/workflows/ci.yml          Compilación con lint y pruebas en cada push / pull request
 ```
 
@@ -84,6 +88,12 @@ docker compose exec -T db sh /docker-entrypoint-initdb.d/01-cuentas-aplicacion.s
 
 Detalle de la decisión en [ADR 06](docs/architecture/adr/0006-cuentas-de-base-de-datos.md).
 
+### Históricos de producción
+
+Las cantidades reales de la empresa no están en el repositorio. Tras arrancar el backend, cárguelas por
+la API con `bash docs/datos/cargar-historicos.sh` a partir de un CSV local en `datos-locales/`
+(ignorado por git). Detalle en [docs/datos/README.md](docs/datos/README.md).
+
 Cuentas iniciales:
 
 | Usuario      | Rol        | Contraseña                    | Cuándo se crea                           |
@@ -118,10 +128,18 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 
 ## Verificación realizada
 
-- `mvnw test`: 88 pruebas (alcance por rol en unidad, flujo de login, matriz 4 roles × 10 endpoints,
-  acceso anónimo, CSRF con su propio código de error y auditoría, errores de formato en español,
-  administración de cuentas, permiso exigido también en el caso de uso, sesión invalidada al desactivar,
-  cambio de rol inmediato).
+- `mvnw verify` (29-10-2026): 129 pruebas, sin advertencias de `-Xlint:all`. Además de las de
+  autenticación y roles (alcance por rol, login, matriz 4 roles × 10 endpoints, CSRF, auditoría,
+  administración de cuentas, permiso exigido también en el caso de uso), incluye:
+  - los 4 métodos contra cada periodo y los MAD/MAPE de las hojas Spokane y ACME (6 decimales);
+  - reglas de parámetros y del MAPE con reales en cero;
+  - carga de históricos: orden, versión de datos, conflicto por mes repetido (409), huecos y meses
+    futuros (422), errores por campo (400), lote rechazado sin efectos, permiso en el caso de uso.
 - Ejecución contra PostgreSQL 17 en Docker con cuentas separadas: Flyway valida con la cuenta de
   migraciones, la aplicación opera con la cuenta sin DDL ni `DELETE`; login, `me`, CSRF rechazado,
   ruta sin versión denegada, JSON malformado, logout y eventos de auditoría comprobados con `curl`.
+- Fase 1 contra PostgreSQL 17 (29-10-2026): Flyway aplicó V3 con la cuenta de migraciones e Hibernate
+  validó las entidades; el script cargó las 4 referencias (57 meses cada una) y una segunda ejecución
+  quedó rechazada con 409 sin duplicar datos; los totales coinciden con la hoja DATOS; la cuenta de la
+  aplicación no puede borrar observaciones; `docs/pruebas/ejecutar-pruebas-api.sh`: 25 aprobadas,
+  0 fallidas, 2 bloqueadas (pronóstico e indicadores).
