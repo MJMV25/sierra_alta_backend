@@ -104,9 +104,13 @@ verificar CP-030 "Código malformed-request" malformed-request "$(codigo)"
 verificar CP-031 "Consultar productos" 200 "$(estado "$TMP/plan" GET /history/products)"
 verificar CP-031 "El catálogo incluye Jersey Pro" si "$(grep -q "\"code\":\"JERSEY-PRO\"" "$TMP/respuesta.json" && echo si || echo no)"
 
+# Requiere los históricos cargados (docs/datos/README.md); cada ejecución queda guardada.
+verificar "CP-001…009" "Ejecutar pronóstico MA(2) sobre Jersey Pro" 201 "$(estado "$TMP/plan" POST /forecasts '{"seriesId":1,"methods":[{"method":"SIMPLE_MOVING_AVERAGE","periods":2}]}')"
+verificar "CP-001…009" "La ejecución trae MAD y MAPE" si "$(grep -q '"mad":[0-9]' "$TMP/respuesta.json" && grep -q '"mapePercent":[0-9]' "$TMP/respuesta.json" && echo si || echo no)"
+verificar CP-025 "Supervisor consulta ejecuciones (solo lectura)" 200 "$(estado "$TMP/sup" GET /forecasts)"
+
 echo
 echo "Casos cuya función aún no está implementada (se reintentan cuando exista):"
-bloqueado "CP-001…009" "Ejecutar pronóstico MA(2) y calcular MAD/MAPE" "$(estado "$TMP/plan" POST /forecasts '{"seriesId":1,"window":2}')"
 bloqueado CP-032 "Consultar indicadores de una ejecución" "$(estado "$TMP/plan" GET /indicators/executions/1)"
 echo
 

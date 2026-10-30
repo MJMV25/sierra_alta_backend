@@ -3,6 +3,7 @@ package co.sierraalta.production.history.application;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,6 +73,16 @@ public class HistoryService {
 				.toList();
 		return new SeriesObservations(found.getId(), found.getProduct().getCode(), found.getProduct().getName(),
 				found.getMeasure(), found.getPeriodicity(), found.getUnit(), dataVersion, values);
+	}
+
+	/** Identificación de las series pedidas, por id; las que no existen no aparecen en el mapa. */
+	@Transactional(readOnly = true)
+	@PreAuthorize("hasAuthority('history:read')")
+	public Map<Long, SeriesReference> seriesReferences(Collection<Long> seriesIds) {
+		return series.findWithProductByIdIn(seriesIds).stream()
+				.collect(Collectors.toMap(Series::getId, s -> new SeriesReference(s.getId(),
+						s.getProduct().getCode(), s.getProduct().getName(), s.getMeasure(), s.getPeriodicity(),
+						s.getUnit())));
 	}
 
 	/**

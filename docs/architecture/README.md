@@ -50,6 +50,9 @@ Migraciones Flyway en `src/main/resources/db/migration`:
 - `V3__cargas_y_catalogo.sql`: `carga` (autor, fecha y rango de cada lote; su id es la versión de datos),
   `observacion.carga_id` y el catálogo de las 4 referencias con su serie de producción mensual. Las
   cantidades no se versionan: se cargan por la API ([docs/datos](../datos/README.md)).
+- `V4__ejecuciones_por_metodo.sql`: una ejecución agrupa de 1 a 4 métodos (`metodo_ejecutado`, `peso`)
+  con sus `resultado` y `metrica`; `ejecucion` guarda la versión de datos, la ventana de evaluación y la
+  clave de idempotencia. Reemplaza el diseño de un solo método de V2 (sus tablas de resultados estaban vacías).
 
 Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunca editando una aplicada.
 

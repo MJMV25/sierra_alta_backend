@@ -4,10 +4,10 @@ API REST del sistema web de pronóstico de producción (Sierra Alta S.A.S. BIC, 
 Monolito modular multicapa en **Java 21 + Spring Boot 4.1 + Spring Security 7 + PostgreSQL**.
 El frontend React + Vite vive en un repositorio/carpeta aparte y consume esta API.
 
-> Estado actual: **inicio de sesión, alcance por rol e históricos (fase 1) totalmente funcionales.**
-> Los cuatro métodos de pronóstico y los indicadores MAD/MAPE están implementados como dominio y
-> verificados contra el Excel corregido; los endpoints de `forecast` e `indicators` responden
-> `501 Not Implemented` hasta conectarlos con su caso de uso.
+> Estado actual: **inicio de sesión, alcance por rol, históricos (fase 1) y ejecución de pronósticos
+> (fase 2) totalmente funcionales.** Los cuatro métodos con MAD y MAPE reproducen el Excel corregido
+> también a través de la API. `GET /indicators/executions/{id}` responde `501 Not Implemented` hasta la
+> fase 3 (comparación y umbral).
 
 ## Estructura
 
@@ -23,13 +23,13 @@ src/main/java/co/sierraalta/production
 │       ├── persistence/          Repositorios Spring Data
 │       └── bootstrap/            Creación del primer administrador y cuentas demo
 ├── history/                      Productos, series, observaciones y cargas  ← funcional
-├── forecast/                     4 métodos en domain/ (Strategy); caso de uso y endpoints pendientes
-├── indicators/                   MAD y MAPE en domain/; endpoint pendiente
+├── forecast/                     Ejecuciones de 1 a 4 métodos (Facade + Strategy)  ← funcional
+├── indicators/                   MAD y MAPE en domain/; endpoint de comparación pendiente (fase 3)
 └── shared/                       Errores RFC 9457 (problem+json), CORS y prefijo /api/v1
 src/main/resources
 ├── application.yml / application-dev.yml
 └── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos ·
-                                  V3 cargas y catálogo de referencias (Flyway)
+                                  V3 cargas y catálogo de referencias · V4 ejecuciones por método (Flyway)
 src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel corregido
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
@@ -128,13 +128,16 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 
 ## Verificación realizada
 
-- `mvnw verify` (29-10-2026): 129 pruebas, sin advertencias de `-Xlint:all`. Además de las de
+- `mvnw verify` (29-10-2026, fase 2): 139 pruebas, sin advertencias de `-Xlint:all`. Además de las de
   autenticación y roles (alcance por rol, login, matriz 4 roles × 10 endpoints, CSRF, auditoría,
   administración de cuentas, permiso exigido también en el caso de uso), incluye:
   - los 4 métodos contra cada periodo y los MAD/MAPE de las hojas Spokane y ACME (6 decimales);
   - reglas de parámetros y del MAPE con reales en cero;
   - carga de históricos: orden, versión de datos, conflicto por mes repetido (409), huecos y meses
-    futuros (422), errores por campo (400), lote rechazado sin efectos, permiso en el caso de uso.
+    futuros (422), errores por campo (400), lote rechazado sin efectos, permiso en el caso de uso;
+  - pronóstico por la API: las series de Spokane y ACME cargadas por el endpoint de históricos dan los
+    mismos MAD y MAPE que el Excel; ejecución guardada y releída igual; idempotencia; n igual al total;
+    MAPE con reales en cero; errores por campo (`methods[2].alpha`); serie sin datos (422).
 - Ejecución contra PostgreSQL 17 en Docker con cuentas separadas: Flyway valida con la cuenta de
   migraciones, la aplicación opera con la cuenta sin DDL ni `DELETE`; login, `me`, CSRF rechazado,
   ruta sin versión denegada, JSON malformado, logout y eventos de auditoría comprobados con `curl`.

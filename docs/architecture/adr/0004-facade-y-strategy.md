@@ -11,8 +11,9 @@ suavizamiento exponencial y suavizamiento exponencial con ajuste a la tendencia 
 por método · un contrato común con una implementación por método.
 
 **Decisión.**
-1. El servicio `EjecutarPronostico` (módulo `forecast`) actúa como Facade: consulta la serie, ejecuta los
-   métodos, entrega los pares a `indicators` y guarda todo en una transacción.
+1. `ForecastService` (módulo `forecast`, caso de uso "ejecutar pronóstico") actúa como Facade: consulta
+   la serie con `HistoryService`, ejecuta los métodos pedidos, calcula MAD y MAPE con `indicators` en la
+   ventana común y guarda ejecución, entradas, resultados y métricas en una transacción (migración V4).
 2. Strategy: `ForecastMethod` (paquete `forecast.domain`) con `SimpleMovingAverage`,
    `WeightedMovingAverage`, `ExponentialSmoothing` y `TrendAdjustedExponentialSmoothing`. Cada uno valida
    sus parámetros al construirse y no depende de Spring ni de SQL.

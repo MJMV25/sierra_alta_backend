@@ -100,14 +100,59 @@ Reglas de la carga (todo el lote o nada, [ADR 07](adr/0007-reglas-de-calculo.md)
 | Mes que ya tiene dato en la serie | 409 | `conflict` |
 | Mes repetido dentro del lote, mes posterior al mes en curso (hora de Colombia) o carga que dejaría meses sin dato | 422 | `business-rule` (el detalle nombra los meses) |
 
-### forecast, indicators (contrato y permisos; responden 501)
+### forecast (funcional)
+
+| Método | Ruta                          | Permiso            | Cuerpo / respuesta |
+|--------|-------------------------------|--------------------|--------------------|
+| POST   | `/api/v1/forecasts`           | `forecast:execute` | `{seriesId, methods: [...]}` → 201 `ForecastDetail` (200 si se reenvía la misma `Idempotency-Key`) |
+| GET    | `/api/v1/forecasts?seriesId=` | `forecast:read`    | → últimas 50 `[ForecastSummary]`, de la más reciente a la más antigua; `seriesId` opcional |
+| GET    | `/api/v1/forecasts/{id}`      | `forecast:read`    | → `ForecastDetail` (404 si no existe) |
+
+Una ejecución corre de 1 a 4 métodos **distintos** sobre la misma serie y los evalúa en la misma ventana
+(desde el primer periodo en que todos tienen pronóstico, como el Excel). Cada método lleva solo sus
+parámetros; los demás se ignoran:
+
+```json
+{ "seriesId": 1, "methods": [
+    { "method": "SIMPLE_MOVING_AVERAGE", "periods": 5 },
+    { "method": "WEIGHTED_MOVING_AVERAGE", "weights": [0.3, 0.2, 0.2, 0.2, 0.1] },
+    { "method": "EXPONENTIAL_SMOOTHING", "alpha": 0.05 },
+    { "method": "TREND_ADJUSTED_EXPONENTIAL_SMOOTHING", "alpha": 0.0025, "beta": 0.99 } ] }
+```
+
+| Parámetro | Regla ([ADR 07](adr/0007-reglas-de-calculo.md)) |
+|-----------|------------------------------------------------|
+| `periods` (promedio simple) | Entero ≥ 1 y ≤ meses cargados. Con n igual al total solo hay pronóstico siguiente y los indicadores son nulos |
+| `weights` (ponderado) | Cada uno en (0, 1], suma 1, hasta 10 decimales. `weights[0]` (K0) es el peso del mes **más reciente** |
+| `alpha`, `beta` | Estrictamente entre 0 y 1, hasta 10 decimales |
+
+Errores: parámetro faltante o fuera de rango, método repetido o `Idempotency-Key` con formato inválido →
+400 `validation` con `errors[].field` como `methods[2].alpha`; serie sin datos → 422; serie inexistente → 404.
+
+`ForecastDetail`: `{ id, seriesId, productCode, productName, measure, unit, dataVersion, executedAt,
+executedBy, calculationVersion, evaluationStart, actuals: [{period, value}], methods: [MethodResult] }`.
+`MethodResult`: `{ method, periods, weights, alpha, beta, forecasts: [{period, forecast, actual}],
+nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, mapeExcluded }`.
+
+- `forecasts` trae todos los pronósticos que tienen real, también los anteriores a `evaluationStart`
+  (el suavizamiento pronostica desde el mes 2); MAD y MAPE solo usan los meses desde `evaluationStart`.
+- `mad` está en unidades; `mapePercent` en porcentaje. Ambos son nulos si no son calculables.
+  `mapeExcluded` cuenta los meses con real 0, que no entran al MAPE.
+- `dataVersion` es la carga de históricos usada y `actuals` la instantánea de reales: la ejecución no
+  cambia aunque después se agreguen meses. `executedBy` es el id del usuario.
+- `Idempotency-Key` (opcional, 1–64 caracteres `A-Z a-z 0-9 _ -`): el frontend envía una clave nueva por
+  cada clic en "Ejecutar"; un reenvío con la misma clave devuelve la ejecución original sin recalcular.
+
+`ForecastSummary`: `{ id, seriesId, productName, executedAt, executedBy, dataVersion, evaluationStart,
+methods: ["SIMPLE_MOVING_AVERAGE", ...] }`.
+
+### indicators (contrato y permisos; responde 501)
 
 | Método | Ruta                                       | Permiso             |
 |--------|--------------------------------------------|---------------------|
-| POST   | `/api/v1/forecasts`                           | `forecast:execute`  |
-| GET    | `/api/v1/forecasts`                           | `forecast:read`     |
-| GET    | `/api/v1/forecasts/{id}`                      | `forecast:read`     |
 | GET    | `/api/v1/indicators/executions/{id}`          | `indicators:read`   |
+
+Mientras se implementa la comparación (fase 3), MAD y MAPE de cada método vienen en `ForecastDetail`.
 
 Cualquier ruta no declarada en `SecurityConfig` se deniega (403 con sesión, 401 sin ella).
 

@@ -6,6 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import co.sierraalta.production.history.domain.Measure;
+import co.sierraalta.production.history.domain.Periodicity;
+import co.sierraalta.production.history.domain.Product;
+import co.sierraalta.production.history.domain.Series;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +20,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Base de las pruebas de integración: contexto completo, cadena de seguridad real y H2 con las
@@ -33,6 +39,26 @@ public abstract class ApiIntegrationTest {
 
 	@Autowired
 	protected MockMvc mvc;
+
+	@Autowired
+	private EntityManager entityManager;
+
+	@Autowired
+	private TransactionTemplate transaction;
+
+	/**
+	 * Serie mensual de producción propia de la prueba, vacía, para no depender del orden de ejecución.
+	 * No hay API para crear referencias: el catálogo se define por migración.
+	 */
+	protected long newSeries() {
+		return transaction.execute(status -> {
+			Product product = new Product("TEST-" + SEQUENCE.incrementAndGet(), "Producto de prueba");
+			entityManager.persist(product);
+			Series series = new Series(product, Measure.PRODUCCION, Periodicity.MENSUAL, "UNIDADES");
+			entityManager.persist(series);
+			return series.getId();
+		});
+	}
 
 	/** Inicia sesión por el endpoint real y devuelve la sesión HTTP resultante. */
 	protected MockHttpSession login(String username, String password) throws Exception {

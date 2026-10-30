@@ -13,18 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import co.sierraalta.production.ApiIntegrationTest;
 import co.sierraalta.production.history.application.HistoryService;
 import co.sierraalta.production.history.application.NewObservation;
 import co.sierraalta.production.history.domain.DataLoad;
-import co.sierraalta.production.history.domain.Measure;
-import co.sierraalta.production.history.domain.Periodicity;
-import co.sierraalta.production.history.domain.Product;
-import co.sierraalta.production.history.domain.Series;
 import co.sierraalta.production.history.infrastructure.persistence.DataLoadRepository;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -32,21 +26,12 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Carga y consulta de históricos por la API real. Cada prueba usa su propia serie para no depender del
  * orden de ejecución; las 4 series del catálogo quedan vacías.
  */
 class HistoryApiTest extends ApiIntegrationTest {
-
-	private static final AtomicInteger PRODUCTS = new AtomicInteger();
-
-	@Autowired
-	EntityManager entityManager;
-
-	@Autowired
-	TransactionTemplate transaction;
 
 	@Autowired
 	DataLoadRepository loads;
@@ -199,16 +184,5 @@ class HistoryApiTest extends ApiIntegrationTest {
 			analystSession = login("analista", DEMO_PASSWORD);
 		}
 		return analystSession;
-	}
-
-	/** Serie propia de la prueba. No hay API para crear referencias: el catálogo se define por migración. */
-	private long newSeries() {
-		return transaction.execute(status -> {
-			Product product = new Product("TEST-" + PRODUCTS.incrementAndGet(), "Producto de prueba");
-			entityManager.persist(product);
-			Series series = new Series(product, Measure.PRODUCCION, Periodicity.MENSUAL, "UNIDADES");
-			entityManager.persist(series);
-			return series.getId();
-		});
 	}
 }

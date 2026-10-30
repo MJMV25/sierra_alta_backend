@@ -120,8 +120,9 @@ class UserAdministrationTest extends ApiIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.role").value("PLANNER"));
 
+		// Ya no es 403: pasa la autorización y falla solo porque se envía sin cuerpo.
 		mvc.perform(post("/api/v1/forecasts").session(userSession).with(xsrf()))
-				.andExpect(status().isNotImplemented());
+				.andExpect(status().isBadRequest());
 		mvc.perform(get("/api/v1/auth/me").session(userSession))
 				.andExpect(jsonPath("$.role").value("PLANNER"))
 				.andExpect(jsonPath("$.permissions", hasItem("forecast:execute")));

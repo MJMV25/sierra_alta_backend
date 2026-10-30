@@ -1,5 +1,6 @@
 package co.sierraalta.production.history.infrastructure.persistence;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +19,9 @@ public interface SeriesRepository extends JpaRepository<Series, Long> {
 
 	@EntityGraph(attributePaths = "product")
 	Optional<Series> findWithProductById(Long id);
+
+	@EntityGraph(attributePaths = "product")
+	List<Series> findWithProductByIdIn(Collection<Long> ids);
 
 	/**
 	 * Bloquea la serie durante la carga: dos cargas simultáneas se validan una después de la otra, así
