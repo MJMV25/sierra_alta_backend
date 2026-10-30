@@ -61,6 +61,7 @@ Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunc
 - [ADR 01 — Monolito modular multicapa](adr/0001-monolito-modular.md)
 - [ADR 02 — Frontend React separado y API REST con sesión](adr/0002-react-y-api-rest.md)
 - [ADR 03 — PostgreSQL, Flyway e instantánea por ejecución](adr/0003-postgresql-y-trazabilidad.md)
-- [ADR 04 — Facade para el pronóstico, Strategy aplazado](adr/0004-facade-y-strategy.md)
+- [ADR 04 — Facade y Strategy para el pronóstico](adr/0004-facade-y-strategy.md)
 - [ADR 05 — Alcance de roles en código y sesión revalidada](adr/0005-alcance-de-roles.md)
 - [ADR 06 — Cuentas de base de datos con privilegio mínimo](adr/0006-cuentas-de-base-de-datos.md)
+- [ADR 07 — Reglas de cálculo, evaluación y datos acordadas con Industrial](adr/0007-reglas-de-calculo.md)

@@ -101,5 +101,5 @@ Definida en `RoleCode` (tabla 2 del documento de arquitectura) y verificada por 
 | `indicators:read`  |       |   ✔     |    ✔       |   ✔     |
 
 El administrador **no** obtiene automáticamente permisos sobre históricos ni pronósticos.
-Pendiente con Industrial: filtro por línea del supervisor, umbral de intentos fallidos y
-procedimiento de recuperación de acceso.
+El supervisor ve todas las referencias en solo lectura (respuesta 24 de Industrial, [ADR 07](adr/0007-reglas-de-calculo.md)).
+Pendiente con Industrial: umbral de intentos fallidos y procedimiento de recuperación de acceso.
