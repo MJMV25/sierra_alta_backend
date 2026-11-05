@@ -42,7 +42,7 @@ history  ◄── forecast ──►  indicators         auth protege los acces
 
 Migraciones Flyway en `src/main/resources/db/migration`:
 
-- `V1__identidad_y_auditoria.sql`: `rol`, `usuario`, `evento` + catálogo de los 4 roles.
+- `V1__identidad_y_auditoria.sql`: `rol`, `usuario`, `evento` + catálogo de los 4 roles iniciales (V6 elimina SUPERVISOR).
 - `V2__historicos_y_pronosticos.sql`: `producto`, `serie`, `observacion`, `ejecucion`, `entrada`,
   `resultado`, `metrica` con las restricciones de integridad del documento (periodo mensual normalizado,
   valores no negativos, una observación por serie y periodo, instantánea inmutable de entradas, métricas

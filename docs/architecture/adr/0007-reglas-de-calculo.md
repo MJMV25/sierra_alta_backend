@@ -56,7 +56,8 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
   Cada lote queda registrado en `carga` y su id es la versión de datos. Las cantidades reales no se
   versionan en el repositorio ([docs/datos](../../datos/README.md)).
 - **Validación** (20): ambos equipos validan el motor con Spokane y ACME y firman las actas.
-- **Supervisores** (24): ven todas las referencias, en solo lectura.
+- **Supervisores** (24): ven todas las referencias, en solo lectura. El rol se eliminó el 2026-11-05 (ADR 05);
+  la regla aplica a todos los roles que consultan.
 - **Exportación** (23): datos reales y pronosticados, periodo, referencia, método, parámetros,
   indicadores y rango de evaluación, gráfico, fecha y hora de cálculo, usuario, versión de datos y
   advertencias de faltantes o indicadores no calculables.

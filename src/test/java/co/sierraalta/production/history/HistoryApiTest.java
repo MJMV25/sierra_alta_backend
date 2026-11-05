@@ -44,7 +44,7 @@ class HistoryApiTest extends ApiIntegrationTest {
 
 	@Test
 	void catalogListsTheFourReferencesAsMonthlyProduction() throws Exception {
-		mvc.perform(get("/api/v1/history/products").session(login("supervisor", DEMO_PASSWORD)))
+		mvc.perform(get("/api/v1/history/products").session(login("planeador", DEMO_PASSWORD)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[*].code",
 						hasItems("JERSEY-PRO", "PANTALONETA-ESTELAR", "T-SHIRT-RUNNING", "JERSEY-SLIM")))

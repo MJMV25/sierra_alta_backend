@@ -30,7 +30,7 @@ src/main/resources
 ├── application.yml / application-dev.yml
 └── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos ·
                                   V3 cargas y catálogo de referencias · V4 ejecuciones por método ·
-                                  V5 umbral de aceptación (Flyway)
+                                  V5 umbral de aceptación · V6 roles sin supervisor (Flyway)
 src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel corregido
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
@@ -101,10 +101,14 @@ Cuentas iniciales:
 |--------------|------------|-------------------------------|------------------------------------------|
 | `admin`*     | ADMIN      | `BOOTSTRAP_ADMIN_PASSWORD`    | Si no existe ningún administrador activo |
 | `planeador`  | PLANNER    | `DEMO_USERS_PASSWORD`         | Solo con el perfil `dev`                 |
-| `supervisor` | SUPERVISOR | `DEMO_USERS_PASSWORD`         | Solo con el perfil `dev`                 |
 | `analista`   | ANALYST    | `DEMO_USERS_PASSWORD`         | Solo con el perfil `dev`                 |
 
 \* nombre configurable con `BOOTSTRAP_ADMIN_USERNAME`.
+
+El administrador tiene todos los permisos y es el único que ejecuta pronósticos; el planeador consulta y
+extrae la información; el analista carga los históricos (matriz completa en
+[docs/architecture/api.md](docs/architecture/api.md)). El rol Supervisor de línea se eliminó en V6: las
+cuentas que lo tenían quedaron como analistas inactivas.
 
 ## Probar el login a mano
 
@@ -129,6 +133,8 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 
 ## Verificación realizada
 
+- `mvnw verify` (05-11-2026, roles): 134 pruebas. Matriz 3 roles × 10 endpoints con el nuevo alcance
+  (solo el administrador ejecuta pronósticos; el planeador ya no ejecuta ni carga).
 - `mvnw verify` (05-11-2026, fase 3): 144 pruebas, sin advertencias de `-Xlint:all`. Agrega la tabla
   comparativa: con Spokane, Holt es el mejor por MAD y MAPE y los 4 cumplen el 10 %; con ACME, el
   ponderado es el mejor y ninguno cumple (MAPE de 27 % a 37 %); empates a 6 decimales, MAPE igual al
@@ -137,7 +143,7 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
   históricos ya cargados; `docs/pruebas/ejecutar-pruebas-api.sh` a través del proxy del frontend:
   31 aprobadas, 0 fallidas, 0 bloqueadas. Cada ejecución guarda `umbral_mape = 0,10`.
 - `mvnw verify` (29-10-2026, fase 2): 139 pruebas, sin advertencias de `-Xlint:all`. Además de las de
-  autenticación y roles (alcance por rol, login, matriz 4 roles × 10 endpoints, CSRF, auditoría,
+  autenticación y roles (alcance por rol, login, matriz por rol y endpoint, CSRF, auditoría,
   administración de cuentas, permiso exigido también en el caso de uso), incluye:
   - los 4 métodos contra cada periodo y los MAD/MAPE de las hojas Spokane y ACME (6 decimales);
   - reglas de parámetros y del MAPE con reales en cero;

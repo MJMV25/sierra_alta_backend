@@ -56,7 +56,7 @@ class UserAdministrationTest extends ApiIntegrationTest {
 	void duplicateUsernameIsAConflict() throws Exception {
 		MockHttpSession admin = login(ADMIN, ADMIN_PASSWORD);
 		String username = uniqueUsername("duplicado");
-		createUser(admin, username, PASSWORD, "SUPERVISOR");
+		createUser(admin, username, PASSWORD, "PLANNER");
 
 		mvc.perform(post("/api/v1/admin/users").session(admin).with(xsrf())
 					.contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ class UserAdministrationTest extends ApiIntegrationTest {
 	void reactivatedAccountCanLogInAgain() throws Exception {
 		MockHttpSession admin = login(ADMIN, ADMIN_PASSWORD);
 		String username = uniqueUsername("reactivado");
-		long id = createUser(admin, username, PASSWORD, "SUPERVISOR");
+		long id = createUser(admin, username, PASSWORD, "PLANNER");
 		setActive(admin, id, false);
 		setActive(admin, id, true);
 
@@ -109,22 +109,22 @@ class UserAdministrationTest extends ApiIntegrationTest {
 	void roleChangeAppliesToTheOpenSessionImmediately() throws Exception {
 		MockHttpSession admin = login(ADMIN, ADMIN_PASSWORD);
 		String username = uniqueUsername("cambio-rol");
-		long id = createUser(admin, username, PASSWORD, "SUPERVISOR");
+		long id = createUser(admin, username, PASSWORD, "PLANNER");
 		MockHttpSession userSession = login(username, PASSWORD);
 
 		mvc.perform(post("/api/v1/forecasts").session(userSession).with(xsrf()))
 				.andExpect(status().isForbidden());
 
 		mvc.perform(patch("/api/v1/admin/users/{id}/role", id).session(admin).with(xsrf())
-					.contentType(MediaType.APPLICATION_JSON).content("{\"role\": \"PLANNER\"}"))
+					.contentType(MediaType.APPLICATION_JSON).content("{\"role\": \"ADMIN\"}"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.role").value("PLANNER"));
+				.andExpect(jsonPath("$.role").value("ADMIN"));
 
 		// Ya no es 403: pasa la autorización y falla solo porque se envía sin cuerpo.
 		mvc.perform(post("/api/v1/forecasts").session(userSession).with(xsrf()))
 				.andExpect(status().isBadRequest());
 		mvc.perform(get("/api/v1/auth/me").session(userSession))
-				.andExpect(jsonPath("$.role").value("PLANNER"))
+				.andExpect(jsonPath("$.role").value("ADMIN"))
 				.andExpect(jsonPath("$.permissions", hasItem("forecast:execute")));
 	}
 

@@ -62,6 +62,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 	/** Sesiones abiertas al primer uso: un login previo borraría el contexto de {@code @WithMockUser}. */
 	private MockHttpSession analystSession;
 	private MockHttpSession plannerSession;
+	private MockHttpSession adminSession;
 
 	@Test
 	void spokaneThroughTheApiMatchesTheSpreadsheet() throws Exception {
@@ -98,8 +99,8 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andReturn().getResponse().getContentAsString();
 		long id = idOf(created);
 
-		// Lo guardado se lee igual, también por el supervisor (solo lectura).
-		mvc.perform(get("/api/v1/forecasts/{id}", id).session(login("supervisor", DEMO_PASSWORD)))
+		// Lo guardado se lee igual, también por el planeador (solo lectura).
+		mvc.perform(get("/api/v1/forecasts/{id}", id).session(planner()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.methods[2].mad", closeTo(16.252331083901609, EXCEL)))
 				.andExpect(jsonPath("$.methods[3].mapePercent", closeTo(5.7923763097286106, EXCEL_PERCENT)));
@@ -109,7 +110,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$[0].methods.length()").value(4));
 
 		// Comparación: Holt tiene el menor MAD y el menor MAPE; todos los MAPE (5,8 % a 7,5 %) están bajo el 10 %.
-		mvc.perform(get("/api/v1/indicators/executions/{id}", id).session(login("supervisor", DEMO_PASSWORD)))
+		mvc.perform(get("/api/v1/indicators/executions/{id}", id).session(planner()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.executionId").value(id))
 				.andExpect(jsonPath("$.evaluationFrom").value("2020-06"))
@@ -301,7 +302,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 
 	private ResultActions postForecast(String body, String idempotencyKey) throws Exception {
 		var request = post("/api/v1/forecasts")
-				.session(planner()).with(xsrf())
+				.session(admin()).with(xsrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body);
 		if (idempotencyKey != null) {
@@ -343,6 +344,14 @@ class ForecastApiTest extends ApiIntegrationTest {
 			analystSession = login("analista", DEMO_PASSWORD);
 		}
 		return analystSession;
+	}
+
+	/** Solo el administrador ejecuta pronósticos (ADR 05). */
+	private MockHttpSession admin() throws Exception {
+		if (adminSession == null) {
+			adminSession = login(ADMIN, ADMIN_PASSWORD);
+		}
+		return adminSession;
 	}
 
 	private MockHttpSession planner() throws Exception {

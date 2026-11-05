@@ -74,20 +74,19 @@ verificar CP-017 "Mismo mensaje para usuario inexistente y clave errónea" igual
 verificar CP-023 "Planeador consulta pronósticos (permitido)" 200 "$(estado "$TMP/plan" GET /forecasts)"
 verificar CP-023 "Planeador intenta administrar cuentas" 403 "$(estado "$TMP/plan" GET /admin/users)"
 
-sesion "$TMP/sup" supervisor "$CLAVE_DEMO" > /dev/null
-verificar CP-025 "Supervisor intenta ejecutar un pronóstico" 403 "$(estado "$TMP/sup" POST /forecasts)"
+verificar CP-025 "Planeador intenta ejecutar un pronóstico (solo el administrador)" 403 "$(estado "$TMP/plan" POST /forecasts)"
 verificar CP-025 "La denegación usa el código access-denied" access-denied "$(codigo)"
-verificar CP-023 "Supervisor intenta cargar observaciones" 403 "$(estado "$TMP/sup" POST /history/series/1/observations)"
+verificar CP-023 "Planeador intenta cargar observaciones" 403 "$(estado "$TMP/plan" POST /history/series/1/observations)"
 
 sesion "$TMP/ana" analista "$CLAVE_DEMO" > /dev/null
 verificar CP-023 "Analista carga observaciones (permitido; lote vacío rechazado)" 400 "$(estado "$TMP/ana" POST /history/series/1/observations)"
 verificar CP-023 "El lote vacío se informa por campo" validation "$(codigo)"
+verificar CP-025 "Analista intenta ejecutar un pronóstico (solo el administrador)" 403 "$(estado "$TMP/ana" POST /forecasts)"
 
-if [ -n "$ADMIN" ] && [ -n "$CLAVE_ADMIN" ]; then
-	sesion "$TMP/adm" "$ADMIN" "$CLAVE_ADMIN" > /dev/null
-	verificar CP-024 "Administrador lista cuentas" 200 "$(estado "$TMP/adm" GET /admin/users)"
-	verificar CP-024 "Administrador no hereda permisos de históricos" 403 "$(estado "$TMP/adm" GET /history/products)"
-fi
+# El administrador tiene todos los permisos y es el único que ejecuta pronósticos (ADR 05).
+verificar CP-024 "Login del administrador" 200 "$(sesion "$TMP/adm" "$ADMIN" "$CLAVE_ADMIN")"
+verificar CP-024 "Administrador lista cuentas" 200 "$(estado "$TMP/adm" GET /admin/users)"
+verificar CP-024 "Administrador consulta históricos" 200 "$(estado "$TMP/adm" GET /history/products)"
 
 verificar CP-027 "Anónimo consulta pronósticos" 401 "$(estado "$TMP/anon" GET /forecasts)"
 verificar CP-027 "Anónimo consulta su sesión" 401 "$(estado "$TMP/anon" GET /auth/me)"
@@ -105,12 +104,12 @@ verificar CP-031 "Consultar productos" 200 "$(estado "$TMP/plan" GET /history/pr
 verificar CP-031 "El catálogo incluye Jersey Pro" si "$(grep -q "\"code\":\"JERSEY-PRO\"" "$TMP/respuesta.json" && echo si || echo no)"
 
 # Requiere los históricos cargados (docs/datos/README.md); cada ejecución queda guardada.
-verificar "CP-001…009" "Ejecutar pronóstico MA(2) sobre Jersey Pro" 201 "$(estado "$TMP/plan" POST /forecasts '{"seriesId":1,"methods":[{"method":"SIMPLE_MOVING_AVERAGE","periods":2}]}')"
+verificar "CP-001…009" "Ejecutar pronóstico MA(2) sobre Jersey Pro" 201 "$(estado "$TMP/adm" POST /forecasts '{"seriesId":1,"methods":[{"method":"SIMPLE_MOVING_AVERAGE","periods":2}]}')"
 verificar "CP-001…009" "La ejecución trae MAD y MAPE" si "$(grep -q '"mad":[0-9]' "$TMP/respuesta.json" && grep -q '"mapePercent":[0-9]' "$TMP/respuesta.json" && echo si || echo no)"
 EJECUCION="$(grep -o '"id":[0-9]*' "$TMP/respuesta.json" | head -1 | cut -d: -f2)"
-verificar CP-025 "Supervisor consulta ejecuciones (solo lectura)" 200 "$(estado "$TMP/sup" GET /forecasts)"
+verificar CP-025 "Analista consulta ejecuciones" 200 "$(estado "$TMP/ana" GET /forecasts)"
 
-verificar CP-032 "Supervisor consulta la tabla comparativa de la ejecución" 200 "$(estado "$TMP/sup" GET "/indicators/executions/${EJECUCION:-0}")"
+verificar CP-032 "Planeador consulta la tabla comparativa de la ejecución" 200 "$(estado "$TMP/plan" GET "/indicators/executions/${EJECUCION:-0}")"
 verificar CP-032 "La tabla trae el umbral y el estado del método" si "$(grep -q '"mapeThresholdPercent":10' "$TMP/respuesta.json" && grep -q -E '"status":"(CUMPLE|NO_CUMPLE|SIN_EVALUAR)"' "$TMP/respuesta.json" && echo si || echo no)"
 verificar CP-032 "Indicadores de una ejecución inexistente" 404 "$(estado "$TMP/plan" GET /indicators/executions/999999)"
 

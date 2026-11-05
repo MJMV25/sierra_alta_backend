@@ -26,8 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Contrato REST del módulo de pronósticos. Permisos (ver {@code SecurityConfig}):
- * ejecutar {@code forecast:execute} (planeador, analista); consultar {@code forecast:read}
- * (planeador, supervisor, analista).
+ * ejecutar {@code forecast:execute} (solo administrador); consultar {@code forecast:read}
+ * (administrador, planeador, analista).
  */
 @RestController
 @RequestMapping(ApiPaths.V1 + "/forecasts")

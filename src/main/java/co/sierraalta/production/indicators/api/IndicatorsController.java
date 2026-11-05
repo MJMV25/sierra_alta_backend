@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Contrato REST del módulo de indicadores. Permiso {@code indicators:read} (planeador, supervisor, analista). */
+/** Contrato REST del módulo de indicadores. Permiso {@code indicators:read} (administrador, planeador, analista). */
 @RestController
 @RequestMapping(ApiPaths.V1 + "/indicators")
 public class IndicatorsController {

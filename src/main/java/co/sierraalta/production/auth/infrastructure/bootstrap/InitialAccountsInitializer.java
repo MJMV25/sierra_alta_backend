@@ -27,7 +27,6 @@ public class InitialAccountsInitializer implements ApplicationRunner {
 	/** Nombre de usuario de demostración para cada rol operativo. */
 	static final Map<String, RoleCode> DEMO_USERS = Map.of(
 			"planeador", RoleCode.PLANNER,
-			"supervisor", RoleCode.SUPERVISOR,
 			"analista", RoleCode.ANALYST);
 
 	private final BootstrapProperties properties;

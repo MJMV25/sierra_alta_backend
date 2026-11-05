@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Contrato REST del módulo de históricos. Permisos (ver {@code SecurityConfig}):
- * lectura {@code history:read} (planeador, supervisor, analista); carga {@code history:write} (analista).
+ * lectura {@code history:read} (administrador, planeador, analista); carga {@code history:write} (analista).
  */
 @RestController
 @RequestMapping(ApiPaths.V1 + "/history")

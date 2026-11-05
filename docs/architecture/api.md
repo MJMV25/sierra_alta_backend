@@ -178,17 +178,23 @@ Cualquier ruta no declarada en `SecurityConfig` se deniega (403 con sesión, 401
 
 ## Matriz de alcance por rol
 
-Definida en `RoleCode` (tabla 2 del documento de arquitectura) y verificada por `RoleScopeTest`.
+Definida en `RoleCode` y verificada por `RoleScopeTest`. Parte de la tabla 2 del documento de arquitectura,
+ajustada por el equipo el 2026-11-05 ([ADR 05](adr/0005-alcance-de-roles.md)): se eliminó el rol Supervisor de
+línea y la ejecución de pronósticos quedó solo para el administrador.
 
-| Permiso            | ADMIN | PLANNER | SUPERVISOR | ANALYST |
-|--------------------|:-----:|:-------:|:----------:|:-------:|
-| `users:manage`     |  ✔    |         |            |         |
-| `history:read`     |       |   ✔     |    ✔       |   ✔     |
-| `history:write`    |       |         |            |   ✔     |
-| `forecast:execute` |       |   ✔     |            |   ✔     |
-| `forecast:read`    |       |   ✔     |    ✔       |   ✔     |
-| `indicators:read`  |       |   ✔     |    ✔       |   ✔     |
+| Permiso            | ADMIN | PLANNER | ANALYST |
+|--------------------|:-----:|:-------:|:-------:|
+| `users:manage`     |  ✔    |         |         |
+| `history:read`     |  ✔    |   ✔     |   ✔     |
+| `history:write`    |  ✔    |         |   ✔     |
+| `forecast:execute` |  ✔    |         |         |
+| `forecast:read`    |  ✔    |   ✔     |   ✔     |
+| `indicators:read`  |  ✔    |   ✔     |   ✔     |
 
-El administrador **no** obtiene automáticamente permisos sobre históricos ni pronósticos.
-El supervisor ve todas las referencias en solo lectura (respuesta 24 de Industrial, [ADR 07](adr/0007-reglas-de-calculo.md)).
+- **Administrador:** todos los permisos; es el único que ejecuta pronósticos y administra cuentas.
+- **Planeador:** consulta históricos, pronósticos e indicadores; es quien extrae la información de los
+  pronósticos (la exportación, cuando exista, será suya y del administrador).
+- **Analista:** carga y consulta históricos; consulta pronósticos e indicadores.
+- Todos los que consultan ven todas las referencias (respuesta 24 de Industrial).
+
 Pendiente con Industrial: umbral de intentos fallidos y procedimiento de recuperación de acceso.

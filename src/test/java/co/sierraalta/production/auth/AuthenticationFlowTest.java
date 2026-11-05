@@ -99,7 +99,7 @@ class AuthenticationFlowTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.role").value("PLANNER"))
 				.andExpect(jsonPath("$.roleName").value("Planeador de producción"))
 				.andExpect(jsonPath("$.permissions", containsInAnyOrder(
-						"history:read", "forecast:execute", "forecast:read", "indicators:read")))
+						"history:read", "forecast:read", "indicators:read")))
 				.andExpect(jsonPath("$.password").doesNotExist())
 				// El login renueva el token CSRF.
 				.andExpect(cookie().exists("XSRF-TOKEN"));
@@ -118,7 +118,7 @@ class AuthenticationFlowTest extends ApiIntegrationTest {
 
 	@Test
 	void usernameIsCaseInsensitive() throws Exception {
-		login("  SuperVisor ", DEMO_PASSWORD);
+		login("  AnaLista ", DEMO_PASSWORD);
 	}
 
 	@Test
@@ -191,7 +191,7 @@ class AuthenticationFlowTest extends ApiIntegrationTest {
 		String before = anonymous.getId();
 		MockHttpSession after = (MockHttpSession) mvc.perform(post("/api/v1/auth/login").session(anonymous).with(xsrf())
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(credentials("supervisor", DEMO_PASSWORD)))
+					.content(credentials("analista", DEMO_PASSWORD)))
 				.andExpect(status().isOk())
 				.andReturn().getRequest().getSession(false);
 		assertThat(after.getId()).isNotEqualTo(before);

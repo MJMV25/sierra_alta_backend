@@ -1,4 +1,4 @@
-# Perfil de desarrollo local: activa las cuentas de demostración (planeador, supervisor, analista).
+# Perfil de desarrollo local: activa las cuentas de demostración (planeador, analista).
 app:
   bootstrap:
     demo-users:
