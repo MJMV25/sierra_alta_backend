@@ -35,7 +35,7 @@ src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel cor
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
 docs/datos/                       Carga de los históricos reales por la API (no se versionan)
-.github/workflows/ci.yml          Compilación con lint y pruebas en cada push / pull request
+.github/workflows/tests.yml       Compilación con lint, pruebas y cobertura (JaCoCo) en cada push / pull request
 ```
 
 Cada módulo separa presentación (`api`), aplicación, dominio e infraestructura solo cuando tiene esa
@@ -127,7 +127,9 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 ## Calidad
 
 - `mvnw verify` compila con `-Xlint:all` (advertencias de javac visibles) y ejecuta todas las pruebas;
-  es lo mismo que corre la integración continua (`.github/workflows/ci.yml`).
+  es lo mismo que corre la integración continua (`.github/workflows/tests.yml`), que además deja el
+  reporte de cobertura en `target/site/jacoco/index.html` (en GitHub: artefacto `cobertura-backend` y resumen
+  en la página de la ejecución).
 - `.editorconfig` fija codificación, finales de línea e indentación para cualquier editor.
 - Reglas de desarrollo del proyecto: [PROJECT_RULES.md](PROJECT_RULES.md).
 

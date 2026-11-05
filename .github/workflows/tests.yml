@@ -1,26 +1,80 @@
-# Integración continua: compila con lint de javac y ejecuta todas las pruebas (H2, sin Docker).
-name: CI
+# Pruebas y cobertura del backend. Corre en cada push (cualquier rama) y en cada pull request:
+# compila con el lint de javac, ejecuta todas las pruebas (H2, sin Docker) y genera el reporte de
+# cobertura de JaCoCo, que queda como artefacto descargable y resumido en la página de la ejecución.
+name: Tests
 
 on:
   push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Un push nuevo a la misma rama cancela la ejecución anterior que siga en curso.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  tests:
+    name: Pruebas y cobertura
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Compilar y probar
+
+      - name: Compilar, probar y medir cobertura
         # chmod: desde Windows el bit de ejecución de mvnw puede no quedar registrado en git.
+        # `verify` ejecuta las pruebas con el agente de JaCoCo y genera target/site/jacoco.
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          csv=target/site/jacoco/jacoco.csv
+          if [ ! -f "$csv" ]; then
+            echo "No se generó el reporte de cobertura (revise el paso de pruebas)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Columnas de jacoco.csv: 4-5 instrucciones, 6-7 ramas, 8-9 líneas, 12-13 métodos (perdidas, cubiertas).
+          awk -F, 'NR > 1 { im += $4; ic += $5; bm += $6; bc += $7; lm += $8; lc += $9; mm += $12; mc += $13 }
+            function pct(c, m) { return (c + m) == 0 ? "—" : sprintf("%.1f %%", 100 * c / (c + m)) }
+            END {
+              print "## Cobertura del backend (JaCoCo)\n"
+              print "| Métrica | Cobertura | Cubiertas / total |"
+              print "| --- | ---: | ---: |"
+              printf "| Líneas | %s | %d / %d |\n", pct(lc, lm), lc, lc + lm
+              printf "| Ramas | %s | %d / %d |\n", pct(bc, bm), bc, bc + bm
+              printf "| Instrucciones | %s | %d / %d |\n", pct(ic, im), ic, ic + im
+              printf "| Métodos | %s | %d / %d |\n", pct(mc, mm), mc, mc + mm
+              print "\nReporte completo: artefacto **cobertura-backend** (abra index.html)."
+            }' "$csv" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar el reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-backend
+          path: target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publicar los resultados de las pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas-backend
+          path: target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 30
