@@ -146,13 +146,33 @@ nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, map
 `ForecastSummary`: `{ id, seriesId, productName, executedAt, executedBy, dataVersion, evaluationStart,
 methods: ["SIMPLE_MOVING_AVERAGE", ...] }`.
 
-### indicators (contrato y permisos; responde 501)
+### indicators (funcional)
 
-| Método | Ruta                                       | Permiso             |
-|--------|--------------------------------------------|---------------------|
-| GET    | `/api/v1/indicators/executions/{id}`          | `indicators:read`   |
+| Método | Ruta                                   | Permiso           | Respuesta |
+|--------|----------------------------------------|-------------------|-----------|
+| GET    | `/api/v1/indicators/executions/{id}`   | `indicators:read` | → `ExecutionComparison` (404 si la ejecución no existe) |
 
-Mientras se implementa la comparación (fase 3), MAD y MAPE de cada método vienen en `ForecastDetail`.
+Tabla comparativa de los métodos de una ejecución guardada ([ADR 07](adr/0007-reglas-de-calculo.md),
+preguntas 21 y 22):
+
+```json
+{ "executionId": 7, "seriesId": 1, "evaluationFrom": "2020-06", "evaluationTo": "2022-06",
+  "mapeThresholdPercent": 10,
+  "bestByMad": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"], "bestByMape": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"],
+  "methods": [ { "method": "SIMPLE_MOVING_AVERAGE", "mad": 20.584, "mapePercent": 7.5031047806,
+                 "pairsUsed": 25, "mapeExcluded": 0, "bestByMad": false, "bestByMape": false,
+                 "status": "CUMPLE" }, ... ] }
+```
+
+- `evaluationFrom`–`evaluationTo`: meses evaluados; nulos si ningún mes tuvo pronóstico de todos los
+  métodos. Se muestran siempre junto a los indicadores, porque la ventana común depende de los métodos
+  ejecutados juntos.
+- Ni el MAD ni el MAPE mandan: `bestByMad` y `bestByMape` señalan el menor de cada uno por separado.
+  Si varios coinciden a 6 decimales, todos quedan marcados. Un indicador nulo nunca es el mejor.
+- `status` frente al umbral del MAPE: `CUMPLE` (menor que el umbral), `NO_CUMPLE` (igual o mayor),
+  `SIN_EVALUAR` (MAPE no calculable) o `SIN_CRITERIO` (ejecución anterior a la fase 3, sin umbral).
+- El umbral sale de `MAPE_THRESHOLD_PERCENT` (10 por defecto) y se guarda en cada ejecución, así que
+  cambiarlo solo afecta a las ejecuciones nuevas. El MAD no tiene umbral propio.
 
 Cualquier ruta no declarada en `SecurityConfig` se deniega (403 con sesión, 401 sin ella).
 

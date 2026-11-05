@@ -26,6 +26,7 @@ import co.sierraalta.production.history.application.HistoryService;
 import co.sierraalta.production.history.application.ObservationValue;
 import co.sierraalta.production.history.application.SeriesObservations;
 import co.sierraalta.production.history.application.SeriesReference;
+import co.sierraalta.production.indicators.application.IndicatorsProperties;
 import co.sierraalta.production.indicators.domain.ErrorIndicators;
 import co.sierraalta.production.shared.Decimals;
 import co.sierraalta.production.shared.error.BusinessRuleException;
@@ -38,7 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Facade del pronóstico (ADR 04): lee la serie con el servicio público de {@code history}, ejecuta los
  * métodos, calcula MAD y MAPE con {@code indicators} en la ventana común (ADR 07) y guarda la ejecución,
- * la instantánea de entradas, los resultados y las métricas en una sola transacción.
+ * la instantánea de entradas, los resultados, las métricas y el umbral de aceptación vigente en una sola
+ * transacción.
  *
  * <p>Cada operación exige su permiso aunque la ruta ya lo verifique en {@code SecurityConfig}.
  */
@@ -58,10 +60,13 @@ public class ForecastService {
 
 	private final ForecastExecutionRepository executions;
 	private final HistoryService history;
+	private final IndicatorsProperties indicatorsProperties;
 
-	public ForecastService(ForecastExecutionRepository executions, HistoryService history) {
+	public ForecastService(ForecastExecutionRepository executions, HistoryService history,
+			IndicatorsProperties indicatorsProperties) {
 		this.executions = executions;
 		this.history = history;
+		this.indicatorsProperties = indicatorsProperties;
 	}
 
 	/**
@@ -104,7 +109,8 @@ public class ForecastService {
 		List<InputValue> inputs = observed.stream().map(o -> new InputValue(o.period(), o.value())).toList();
 		YearMonth evaluationStart = start < actuals.size() ? firstMonth.plusMonths(start) : null;
 		ForecastExecution saved = executions.save(new ForecastExecution(command.seriesId(), actorId,
-				CALCULATION_VERSION, series.dataVersion(), evaluationStart, idempotencyKey, inputs, runs));
+				CALCULATION_VERSION, series.dataVersion(), evaluationStart, idempotencyKey,
+				indicatorsProperties.mapeThreshold(), inputs, runs));
 		return new ExecutionOutcome(detail(saved), true);
 	}
 

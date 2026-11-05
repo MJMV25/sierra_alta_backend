@@ -4,10 +4,10 @@ API REST del sistema web de pronóstico de producción (Sierra Alta S.A.S. BIC, 
 Monolito modular multicapa en **Java 21 + Spring Boot 4.1 + Spring Security 7 + PostgreSQL**.
 El frontend React + Vite vive en un repositorio/carpeta aparte y consume esta API.
 
-> Estado actual: **inicio de sesión, alcance por rol, históricos (fase 1) y ejecución de pronósticos
-> (fase 2) totalmente funcionales.** Los cuatro métodos con MAD y MAPE reproducen el Excel corregido
-> también a través de la API. `GET /indicators/executions/{id}` responde `501 Not Implemented` hasta la
-> fase 3 (comparación y umbral).
+> Estado actual: **inicio de sesión, alcance por rol, históricos (fase 1), ejecución de pronósticos
+> (fase 2) y comparación de métodos con umbral (fase 3) funcionales.** Los cuatro métodos con MAD y MAPE
+> reproducen el Excel corregido también a través de la API. `GET /indicators/executions/{id}` entrega la
+> tabla comparativa: mejor método por MAD y por MAPE y estado frente al umbral del MAPE (10 %).
 
 ## Estructura
 
@@ -24,12 +24,13 @@ src/main/java/co/sierraalta/production
 │       └── bootstrap/            Creación del primer administrador y cuentas demo
 ├── history/                      Productos, series, observaciones y cargas  ← funcional
 ├── forecast/                     Ejecuciones de 1 a 4 métodos (Facade + Strategy)  ← funcional
-├── indicators/                   MAD y MAPE en domain/; endpoint de comparación pendiente (fase 3)
+├── indicators/                   MAD, MAPE y tabla comparativa con umbral  ← funcional
 └── shared/                       Errores RFC 9457 (problem+json), CORS y prefijo /api/v1
 src/main/resources
 ├── application.yml / application-dev.yml
 └── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos ·
-                                  V3 cargas y catálogo de referencias · V4 ejecuciones por método (Flyway)
+                                  V3 cargas y catálogo de referencias · V4 ejecuciones por método ·
+                                  V5 umbral de aceptación (Flyway)
 src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel corregido
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
@@ -128,6 +129,11 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 
 ## Verificación realizada
 
+- `mvnw verify` (05-11-2026, fase 3): 144 pruebas, sin advertencias de `-Xlint:all`. Agrega la tabla
+  comparativa: con Spokane, Holt es el mejor por MAD y MAPE y los 4 cumplen el 10 %; con ACME, el
+  ponderado es el mejor y ninguno cumple (MAPE de 27 % a 37 %); empates a 6 decimales, MAPE igual al
+  umbral (no cumple), MAPE no calculable (sin evaluar) y ejecución inexistente (404).
+  **Pendiente:** aplicar V5 y repetir la prueba contra PostgreSQL.
 - `mvnw verify` (29-10-2026, fase 2): 139 pruebas, sin advertencias de `-Xlint:all`. Además de las de
   autenticación y roles (alcance por rol, login, matriz 4 roles × 10 endpoints, CSRF, auditoría,
   administración de cuentas, permiso exigido también en el caso de uso), incluye:

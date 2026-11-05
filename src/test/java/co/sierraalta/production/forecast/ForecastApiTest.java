@@ -2,7 +2,9 @@ package co.sierraalta.production.forecast;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -105,12 +107,31 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].id").value(id))
 				.andExpect(jsonPath("$[0].methods.length()").value(4));
+
+		// Comparación: Holt tiene el menor MAD y el menor MAPE; todos los MAPE (5,8 % a 7,5 %) están bajo el 10 %.
+		mvc.perform(get("/api/v1/indicators/executions/{id}", id).session(login("supervisor", DEMO_PASSWORD)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.executionId").value(id))
+				.andExpect(jsonPath("$.evaluationFrom").value("2020-06"))
+				.andExpect(jsonPath("$.evaluationTo").value("2022-06"))
+				.andExpect(jsonPath("$.mapeThresholdPercent").value(10))
+				.andExpect(jsonPath("$.bestByMad[0]").value("TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"))
+				.andExpect(jsonPath("$.bestByMad.length()").value(1))
+				.andExpect(jsonPath("$.bestByMape[0]").value("TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"))
+				.andExpect(jsonPath("$.methods.length()").value(4))
+				.andExpect(jsonPath("$.methods[0].method").value("SIMPLE_MOVING_AVERAGE"))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(20.583999999999996, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mapePercent", closeTo(7.5031047805661125, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[0].bestByMad").value(false))
+				.andExpect(jsonPath("$.methods[3].bestByMad").value(true))
+				.andExpect(jsonPath("$.methods[3].bestByMape").value(true))
+				.andExpect(jsonPath("$.methods[*].status", everyItem(is("CUMPLE"))));
 	}
 
 	@Test
 	void acmeThroughTheApiMatchesTheSpreadsheet() throws Exception {
-		// Pesos tal como están en el Excel (pregunta 2 aún abierta con Industrial).
-		execute(seriesWith(golden("acme.csv")), """
+		// Pesos tal como están en el Excel, con 0,1 al dato más reciente (pregunta 2, cerrada el 2026-11-05).
+		String created = execute(seriesWith(golden("acme.csv")), """
 				[{"method": "SIMPLE_MOVING_AVERAGE", "periods": 4},
 				 {"method": "WEIGHTED_MOVING_AVERAGE", "weights": [0.1, 0.2, 0.3, 0.4]},
 				 {"method": "EXPONENTIAL_SMOOTHING", "alpha": 0.6},
@@ -121,7 +142,52 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.methods[1].mad", closeTo(106.9047619047619, EXCEL)))
 				.andExpect(jsonPath("$.methods[2].mad", closeTo(147.95104085609503, EXCEL)))
 				.andExpect(jsonPath("$.methods[3].mad", closeTo(132.38013472381994, EXCEL)))
-				.andExpect(jsonPath("$.methods[1].mapePercent", closeTo(27.273668130810985, EXCEL_PERCENT)));
+				.andExpect(jsonPath("$.methods[1].mapePercent", closeTo(27.273668130810985, EXCEL_PERCENT)))
+				.andReturn().getResponse().getContentAsString();
+
+		// El ponderado es el mejor por MAD y por MAPE, pero ningún MAPE (27 % a 37 %) baja del 10 %.
+		mvc.perform(get("/api/v1/indicators/executions/{id}", idOf(created)).session(planner()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.evaluationFrom").value("2020-05"))
+				.andExpect(jsonPath("$.evaluationTo").value("2022-01"))
+				.andExpect(jsonPath("$.bestByMad[0]").value("WEIGHTED_MOVING_AVERAGE"))
+				.andExpect(jsonPath("$.bestByMape[0]").value("WEIGHTED_MOVING_AVERAGE"))
+				.andExpect(jsonPath("$.methods[*].status", everyItem(is("NO_CUMPLE"))));
+	}
+
+	@Test
+	void comparisonMarksTiesAndMethodsWithoutMape() throws Exception {
+		// SMA(1) y ponderado con un solo peso pronostican igual: empatan y ambos son los mejores (MAD 10,
+		// MAPE 8,37 %). El suavizamiento se rezaga con la tendencia: MAD 14,17 y MAPE 11,68 %, no cumple.
+		String created = execute(seriesWith(List.of(100.0, 110.0, 120.0, 130.0)), """
+				[{"method": "SIMPLE_MOVING_AVERAGE", "periods": 1},
+				 {"method": "WEIGHTED_MOVING_AVERAGE", "weights": [1]},
+				 {"method": "EXPONENTIAL_SMOOTHING", "alpha": 0.5}]""")
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		mvc.perform(get("/api/v1/indicators/executions/{id}", idOf(created)).session(planner()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.bestByMad.length()").value(2))
+				.andExpect(jsonPath("$.methods[0].bestByMad").value(true))
+				.andExpect(jsonPath("$.methods[1].bestByMad").value(true))
+				.andExpect(jsonPath("$.methods[2].bestByMad").value(false))
+				.andExpect(jsonPath("$.methods[0].status").value("CUMPLE"))
+				.andExpect(jsonPath("$.methods[1].status").value("CUMPLE"))
+				.andExpect(jsonPath("$.methods[2].status").value("NO_CUMPLE"));
+
+		// n igual al total de datos: sin MAD ni MAPE, nadie es el mejor y el estado es "sin evaluar".
+		String withoutPairs = execute(seriesWith(List.of(100.0, 120.0, 110.0, 130.0)), """
+				[{"method": "SIMPLE_MOVING_AVERAGE", "periods": 4}]""")
+				.andReturn().getResponse().getContentAsString();
+		mvc.perform(get("/api/v1/indicators/executions/{id}", idOf(withoutPairs)).session(planner()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.evaluationFrom").value(nullValue()))
+				.andExpect(jsonPath("$.evaluationTo").value(nullValue()))
+				.andExpect(jsonPath("$.bestByMad.length()").value(0))
+				.andExpect(jsonPath("$.methods[0].mad").value(nullValue()))
+				.andExpect(jsonPath("$.methods[0].status").value("SIN_EVALUAR"));
+
+		mvc.perform(get("/api/v1/indicators/executions/999999").session(planner())).andExpect(status().isNotFound());
 	}
 
 	@Test

@@ -28,7 +28,7 @@ import org.springframework.mock.web.MockHttpSession;
  * Prueba de acceso directo por rol: cada rol contra cada endpoint protegido.
  *
  * <p>Permitido: el endpoint responde (200 en consultas; 404 en un recurso inexistente; 400 en las acciones,
- * que se envían sin cuerpo; 501 en módulos aún no implementados).
+ * que se envían sin cuerpo).
  * Denegado: 403. Sin sesión: 401. La matriz replica la tabla 2 del documento de arquitectura.
  */
 class RoleScopeTest extends ApiIntegrationTest {
@@ -62,7 +62,7 @@ class RoleScopeTest extends ApiIntegrationTest {
 			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", EXECUTORS, 400),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/999999", READERS, 404),
-			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/1", READERS, 501));
+			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/999999", READERS, 404));
 
 	static Stream<Arguments> roleEndpointMatrix() {
 		return USER_BY_ROLE.keySet().stream().sorted()

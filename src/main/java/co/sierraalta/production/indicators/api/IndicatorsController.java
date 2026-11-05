@@ -1,6 +1,7 @@
 package co.sierraalta.production.indicators.api;
 
-import co.sierraalta.production.shared.error.FeatureNotImplementedException;
+import co.sierraalta.production.indicators.application.ExecutionComparison;
+import co.sierraalta.production.indicators.application.IndicatorsService;
 import co.sierraalta.production.shared.web.ApiPaths;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,8 +13,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(ApiPaths.V1 + "/indicators")
 public class IndicatorsController {
 
+	private final IndicatorsService indicators;
+
+	public IndicatorsController(IndicatorsService indicators) {
+		this.indicators = indicators;
+	}
+
+	/** Tabla comparativa de los métodos de una ejecución: MAD, MAPE, mejores y estado frente al umbral. */
 	@GetMapping("/executions/{executionId}")
-	public void metrics(@PathVariable Long executionId) {
-		throw new FeatureNotImplementedException("indicadores de una ejecución");
+	public ExecutionComparison comparison(@PathVariable Long executionId) {
+		return indicators.compare(executionId);
 	}
 }

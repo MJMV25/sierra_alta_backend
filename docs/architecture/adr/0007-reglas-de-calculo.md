@@ -25,8 +25,8 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
 | Valores iniciales (11) | Fijos, como en el Excel: suavizamiento F(1) = D(1); Holt A(1) = D(1), T(1) = 0. El primer pronóstico de ambos es el del periodo 2. |
 | α y β (10) | Solo estrictamente entre 0 y 1. |
 | Pesos del ponderado | Cada uno en (0, 1] y suma igual a 1 (margen 10⁻⁹ por la representación binaria). El primer peso (K0) se aplica al dato más reciente, como en las fórmulas del Excel. |
-| n del promedio móvil | Entero ≥ 1 y ≤ datos disponibles. |
-| Horizonte (12) | Todos los métodos pronostican solo el periodo siguiente. |
+| n del promedio móvil (13) | Entero ≥ 1 y ≤ datos disponibles. Si n es igual al total de datos se calcula solo el pronóstico siguiente y MAD y MAPE quedan "no calculables" (confirmado el 2026-11-05). |
+| Horizonte (12) | Todos los métodos pronostican solo el periodo siguiente (confirmado el 2026-11-05). |
 | MSE (9) | Fuera del proyecto: no se calcula ni se muestra. |
 
 ## Evaluación
@@ -40,8 +40,7 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
   "no calculable". Se guarda como fracción y se muestra ×100.
 - **Mejor modelo** (22): ni el MAD ni el MAPE mandan. El sistema muestra ambos indicadores para cada
   método y señala el mejor por cada uno, sin elegir un ganador único.
-- **Umbral** (21): mientras no se acuerde con la empresa, el sistema muestra "sin criterio definido".
-  Cuando se acuerde, aplicará a MAD y a MAPE.
+- **Umbral** (21): MAPE < 10 % cumple, ≥ 10 % no cumple; configurable (ver "Preguntas cerradas").
 
 ## Datos de Sierra Alta
 
@@ -62,17 +61,17 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
   indicadores y rango de evaluación, gráfico, fecha y hora de cálculo, usuario, versión de datos y
   advertencias de faltantes o indicadores no calculables.
 
-## Por confirmar con Industrial
+## Preguntas cerradas el 2026-11-05
 
-Industrial dejó estas preguntas "para resolver mañana". El código sigue la opción indicada; cambiarla es
-localizado.
+Industrial indicó que los valores del Excel son el estándar de calibración: con Spokane y ACME la
+aplicación debe dar lo mismo que el Excel, y luego se usan los mismos criterios con los datos de producción.
 
-| Pregunta | Opción implementada | Qué cambiaría |
-|----------|---------------------|---------------|
-| 2. Orden de los pesos en ACME | Pesos 0,1 · 0,2 · 0,3 · 0,4 como en el Excel (0,1 al dato más reciente) | Solo el dato de prueba de ACME y sus valores esperados |
-| 12. Horizonte | Solo el periodo siguiente | `Forecast.next` pasaría a una lista |
-| 13. n igual al total de datos | Se permite: solo pronóstico siguiente, MAD y MAPE "no calculables" | `MovingWindows.requireEnoughData` |
-| 21. Umbral | "Sin criterio definido"; luego MAD y MAPE | Configuración del umbral (general o por referencia) |
+| Pregunta | Decisión |
+|----------|----------|
+| 2. Orden de los pesos en ACME | Como en el Excel: 0,1 · 0,2 · 0,3 · 0,4 con 0,1 (K0) al dato más reciente. No cambian los casos dorados. |
+| 12. Horizonte | Solo el periodo siguiente. |
+| 13. n igual al total de datos | Se permite; MAD y MAPE "no calculables". |
+| 21. Umbral | MAPE del 10 % (el valor de la plantilla del plan de pruebas). Un método **cumple** si su MAPE < 10 % y **no cumple** si es ≥ 10 % (la alerta se dispara en "≥ umbral"). Si el MAPE es "no calculable", el estado es "sin evaluar". El 10 % es el valor por defecto y queda configurable. El MAD se muestra al lado en unidades, sin umbral propio. |
 
 **Consecuencias.**
 - (+) Las reglas que afectan los números quedan fijadas por pruebas automáticas contra el Excel.

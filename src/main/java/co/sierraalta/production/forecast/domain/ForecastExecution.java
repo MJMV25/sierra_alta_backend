@@ -1,5 +1,6 @@
 package co.sierraalta.production.forecast.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -58,6 +59,10 @@ public class ForecastExecution {
 	@Column(name = "clave_idempotencia", length = 64)
 	private String idempotencyKey;
 
+	/** Umbral del MAPE vigente al ejecutar, como fracción; nulo en ejecuciones anteriores a la fase 3. */
+	@Column(name = "umbral_mape", precision = 11, scale = 10)
+	private BigDecimal mapeThreshold;
+
 	@ElementCollection
 	@CollectionTable(name = "entrada", joinColumns = @JoinColumn(name = "ejecucion_id"))
 	@OrderBy("period")
@@ -72,7 +77,8 @@ public class ForecastExecution {
 	}
 
 	public ForecastExecution(Long seriesId, Long userId, String calculationVersion, Long dataVersion,
-			YearMonth evaluationStart, String idempotencyKey, List<InputValue> inputs, List<MethodRun> methods) {
+			YearMonth evaluationStart, String idempotencyKey, BigDecimal mapeThreshold, List<InputValue> inputs,
+			List<MethodRun> methods) {
 		this.seriesId = seriesId;
 		this.userId = userId;
 		this.executedAt = Instant.now();
@@ -80,6 +86,7 @@ public class ForecastExecution {
 		this.dataVersion = dataVersion;
 		this.evaluationStart = evaluationStart == null ? null : evaluationStart.atDay(1);
 		this.idempotencyKey = idempotencyKey;
+		this.mapeThreshold = mapeThreshold;
 		this.inputs = new ArrayList<>(inputs);
 		this.methods = new ArrayList<>(methods);
 		this.methods.forEach(method -> method.attachTo(this));
@@ -111,6 +118,10 @@ public class ForecastExecution {
 
 	public YearMonth getEvaluationStart() {
 		return evaluationStart == null ? null : YearMonth.from(evaluationStart);
+	}
+
+	public BigDecimal getMapeThreshold() {
+		return mapeThreshold;
 	}
 
 	public List<InputValue> getInputs() {
