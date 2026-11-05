@@ -1,6 +1,7 @@
 package co.sierraalta.production.auth.domain;
 
 import static co.sierraalta.production.auth.domain.Permission.FORECAST_EXECUTE;
+import static co.sierraalta.production.auth.domain.Permission.FORECAST_EXPORT;
 import static co.sierraalta.production.auth.domain.Permission.FORECAST_READ;
 import static co.sierraalta.production.auth.domain.Permission.HISTORY_READ;
 import static co.sierraalta.production.auth.domain.Permission.HISTORY_WRITE;
@@ -19,9 +20,17 @@ class RoleCodeTest {
 	}
 
 	@Test
-	void plannerOnlyReads() {
+	void plannerReadsAndExports() {
 		assertThat(RoleCode.PLANNER.permissions())
-				.containsExactlyInAnyOrder(HISTORY_READ, FORECAST_READ, INDICATORS_READ);
+				.containsExactlyInAnyOrder(HISTORY_READ, FORECAST_READ, INDICATORS_READ, FORECAST_EXPORT);
+	}
+
+	@Test
+	void onlyPlannerAndAdminExport() {
+		for (RoleCode role : RoleCode.values()) {
+			assertThat(role.grants(FORECAST_EXPORT)).as(role.name())
+					.isEqualTo(role == RoleCode.PLANNER || role == RoleCode.ADMIN);
+		}
 	}
 
 	@Test

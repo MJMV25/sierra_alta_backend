@@ -1,6 +1,7 @@
 package co.sierraalta.production.forecast.api;
 
 import java.net.URI;
+import java.time.YearMonth;
 import java.util.List;
 
 import co.sierraalta.production.auth.infrastructure.security.AccountPrincipal;
@@ -44,7 +45,7 @@ public class ForecastController {
 	public ResponseEntity<ForecastDetail> execute(@Valid @RequestBody CreateForecastRequest body,
 			@RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
 			@AuthenticationPrincipal AccountPrincipal actor) {
-		ForecastCommand command = new ForecastCommand(body.seriesId(),
+		ForecastCommand command = new ForecastCommand(body.seriesId(), month(body.from()), month(body.to()),
 				body.methods().stream().map(MethodRequest::toSpec).toList());
 		ExecutionOutcome outcome = forecasts.execute(command, actor.id(), idempotencyKey);
 		if (!outcome.created()) {
@@ -62,5 +63,10 @@ public class ForecastController {
 	@GetMapping("/{executionId}")
 	public ForecastDetail execution(@PathVariable Long executionId) {
 		return forecasts.get(executionId);
+	}
+
+	/** El formato ya lo validó {@code @Pattern}. */
+	private static YearMonth month(String value) {
+		return value == null ? null : YearMonth.parse(value);
 	}
 }

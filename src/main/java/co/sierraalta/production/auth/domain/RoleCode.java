@@ -1,5 +1,6 @@
 package co.sierraalta.production.auth.domain;
 
+import static co.sierraalta.production.auth.domain.Permission.FORECAST_EXPORT;
 import static co.sierraalta.production.auth.domain.Permission.FORECAST_READ;
 import static co.sierraalta.production.auth.domain.Permission.HISTORY_READ;
 import static co.sierraalta.production.auth.domain.Permission.HISTORY_WRITE;
@@ -22,10 +23,10 @@ public enum RoleCode {
 	/** Tiene todos los permisos; es el único que ejecuta pronósticos y administra cuentas. */
 	ADMIN(EnumSet.allOf(Permission.class)),
 
-	/** Consulta históricos, pronósticos e indicadores; es quien extrae la información de los pronósticos. */
-	PLANNER(EnumSet.of(HISTORY_READ, FORECAST_READ, INDICATORS_READ)),
+	/** Consulta históricos, pronósticos e indicadores y los exporta: es quien extrae la información. */
+	PLANNER(EnumSet.of(HISTORY_READ, FORECAST_READ, INDICATORS_READ, FORECAST_EXPORT)),
 
-	/** Carga y valida históricos y consulta pronósticos e indicadores. No ejecuta pronósticos. */
+	/** Carga y valida históricos y consulta pronósticos e indicadores. No ejecuta ni exporta pronósticos. */
 	ANALYST(EnumSet.of(HISTORY_READ, HISTORY_WRITE, FORECAST_READ, INDICATORS_READ));
 
 	private final Set<Permission> permissions;

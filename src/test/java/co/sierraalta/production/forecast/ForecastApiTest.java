@@ -254,6 +254,43 @@ class ForecastApiTest extends ApiIntegrationTest {
 	}
 
 	@Test
+	void historicalPeriodLimitsTheMonthsUsed() throws Exception {
+		long seriesId = seriesWith(List.of(10.0, 20.0, 30.0, 40.0, 50.0, 60.0));
+		postForecast("""
+				{"seriesId": %d, "from": "2020-02", "to": "2020-04",
+				 "methods": [{"method": "SIMPLE_MOVING_AVERAGE", "periods": 2}]}""".formatted(seriesId), null)
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.periodFrom").value("2020-02"))
+				.andExpect(jsonPath("$.periodTo").value("2020-04"))
+				.andExpect(jsonPath("$.executedByUsername").value(ADMIN))
+				.andExpect(jsonPath("$.actuals.length()").value(3))
+				.andExpect(jsonPath("$.actuals[0].period").value("2020-02"))
+				// SMA n=2 sobre 20, 30, 40: pronóstico de mayo = (30 + 40) / 2, aunque mayo tenga dato cargado.
+				.andExpect(jsonPath("$.methods[0].nextForecast.period").value("2020-05"))
+				.andExpect(jsonPath("$.methods[0].nextForecast.forecast").value(35))
+				.andExpect(jsonPath("$.methods[0].pairsUsed").value(1));
+	}
+
+	@Test
+	void historicalPeriodOutsideTheSeriesIsAFieldError() throws Exception {
+		long seriesId = seriesWith(List.of(10.0, 20.0, 30.0));
+		String sma = "[{\"method\": \"SIMPLE_MOVING_AVERAGE\", \"periods\": 1}]";
+		expectRangeError(seriesId, "\"from\": \"2019-12\"", sma, "from");
+		expectRangeError(seriesId, "\"to\": \"2020-04\"", sma, "to");
+		expectRangeError(seriesId, "\"from\": \"2020-03\", \"to\": \"2020-02\"", sma, "to");
+		expectRangeError(seriesId, "\"from\": \"2020-13\"", sma, "from");
+		// n mayor que los meses del periodo elegido: error del parámetro, como con la serie completa.
+		expectRangeError(seriesId, "\"from\": \"2020-02\"",
+				"[{\"method\": \"SIMPLE_MOVING_AVERAGE\", \"periods\": 3}]", "methods[0].periods");
+	}
+
+	private void expectRangeError(long seriesId, String range, String methods, String field) throws Exception {
+		postForecast("{\"seriesId\": %d, %s, \"methods\": %s}".formatted(seriesId, range, methods), null)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errors[0].field").value(field));
+	}
+
+	@Test
 	void seriesWithoutDataCannotBeForecast() throws Exception {
 		execute(newSeries(), """
 				[{"method": "EXPONENTIAL_SMOOTHING", "alpha": 0.5}]""")

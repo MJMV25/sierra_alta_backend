@@ -28,8 +28,8 @@ los pronósticos, no quien los calcula; el supervisor de línea duplicaba funcio
 
 **Decisión.**
 - `ADMIN` recibe todos los permisos y es el único con `forecast:execute`.
-- `PLANNER` consulta históricos, pronósticos e indicadores; la exportación, cuando exista, será suya y del
-  administrador.
+- `PLANNER` consulta históricos, pronósticos e indicadores y exporta (`forecast:export`, agregado el
+  2026-11-05 con el dashboard), igual que el administrador. El analista no exporta.
 - `ANALYST` carga y consulta históricos y consulta pronósticos e indicadores; ya no ejecuta pronósticos.
 - Se elimina `SUPERVISOR` (migración V6). Sus cuentas no se borran, porque los eventos de seguridad las
   referencian: pasan a `ANALYST` y quedan inactivas hasta que el administrador decida activarlas.

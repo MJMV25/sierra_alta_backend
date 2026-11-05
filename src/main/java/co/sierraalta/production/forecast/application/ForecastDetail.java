@@ -12,12 +12,16 @@ import co.sierraalta.production.history.domain.Measure;
  * Ejecución completa: lo que se muestra en pantalla y se exportará (respuesta 23 de Industrial).
  *
  * @param dataVersion     id de la última carga de la serie al ejecutar
- * @param executedBy      id del usuario que ejecutó
- * @param evaluationStart primer periodo evaluado en todos los métodos; nulo si no hubo ninguno
- * @param actuals         instantánea de los reales usados
+ * @param executedBy         id del usuario que ejecutó
+ * @param executedByUsername su nombre de usuario; nulo si la cuenta ya no existe
+ * @param periodFrom         primer mes histórico usado (periodo elegido al ejecutar)
+ * @param periodTo           último mes histórico usado; el pronóstico siguiente es el mes posterior
+ * @param evaluationStart    primer periodo evaluado en todos los métodos; nulo si no hubo ninguno
+ * @param actuals            instantánea de los reales usados
  */
 public record ForecastDetail(Long id, Long seriesId, String productCode, String productName, Measure measure,
-		String unit, Long dataVersion, Instant executedAt, Long executedBy, String calculationVersion,
+		String unit, Long dataVersion, Instant executedAt, Long executedBy, String executedByUsername,
+		YearMonth periodFrom, YearMonth periodTo, String calculationVersion,
 		YearMonth evaluationStart, List<Actual> actuals, List<MethodResult> methods) {
 
 	public record Actual(YearMonth period, BigDecimal value) {

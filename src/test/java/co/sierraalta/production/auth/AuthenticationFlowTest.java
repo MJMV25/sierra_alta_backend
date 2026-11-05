@@ -99,7 +99,7 @@ class AuthenticationFlowTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.role").value("PLANNER"))
 				.andExpect(jsonPath("$.roleName").value("Planeador de producción"))
 				.andExpect(jsonPath("$.permissions", containsInAnyOrder(
-						"history:read", "forecast:read", "indicators:read")))
+						"history:read", "forecast:read", "indicators:read", "forecast:export")))
 				.andExpect(jsonPath("$.password").doesNotExist())
 				// El login renueva el token CSRF.
 				.andExpect(cookie().exists("XSRF-TOKEN"));

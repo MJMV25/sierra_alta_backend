@@ -11,6 +11,7 @@ import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import co.sierraalta.production.auth.application.UserDirectory;
 import co.sierraalta.production.forecast.domain.Forecast;
 import co.sierraalta.production.forecast.domain.ForecastExecution;
 import co.sierraalta.production.forecast.domain.InputValue;
@@ -61,12 +62,14 @@ public class ForecastService {
 	private final ForecastExecutionRepository executions;
 	private final HistoryService history;
 	private final IndicatorsProperties indicatorsProperties;
+	private final UserDirectory users;
 
 	public ForecastService(ForecastExecutionRepository executions, HistoryService history,
-			IndicatorsProperties indicatorsProperties) {
+			IndicatorsProperties indicatorsProperties, UserDirectory users) {
 		this.executions = executions;
 		this.history = history;
 		this.indicatorsProperties = indicatorsProperties;
+		this.users = users;
 	}
 
 	/**
@@ -92,7 +95,7 @@ public class ForecastService {
 			throw new BusinessRuleException(
 					"La serie no tiene datos cargados; cargue sus históricos antes de pronosticar.");
 		}
-		List<ObservationValue> observed = series.observations();
+		List<ObservationValue> observed = inRange(series.observations(), command.from(), command.to());
 		List<Double> actuals = observed.stream().map(o -> o.value().doubleValue()).toList();
 		YearMonth firstMonth = observed.getFirst().period();
 
@@ -134,6 +137,27 @@ public class ForecastService {
 	public ForecastDetail get(Long executionId) {
 		return detail(executions.findById(executionId).orElseThrow(
 				() -> new ResourceNotFoundException("No existe la ejecución con id " + executionId + ".")));
+	}
+
+	/**
+	 * Meses de {@code from} a {@code to}, ambos incluidos; un extremo nulo toma el primer o el último mes
+	 * cargado. Un extremo fuera de la serie es un error de ese campo: no se recorta en silencio.
+	 */
+	private static List<ObservationValue> inRange(List<ObservationValue> all, YearMonth from, YearMonth to) {
+		YearMonth first = all.getFirst().period();
+		YearMonth last = all.getLast().period();
+		YearMonth start = from == null ? first : from;
+		YearMonth end = to == null ? last : to;
+		if (start.isBefore(first) || start.isAfter(last)) {
+			throw new InvalidFieldException("from", "La serie tiene datos de " + first + " a " + last + ".");
+		}
+		if (end.isBefore(first) || end.isAfter(last)) {
+			throw new InvalidFieldException("to", "La serie tiene datos de " + first + " a " + last + ".");
+		}
+		if (end.isBefore(start)) {
+			throw new InvalidFieldException("to", "El mes final no puede ser anterior al inicial.");
+		}
+		return all.stream().filter(o -> !o.period().isBefore(start) && !o.period().isAfter(end)).toList();
 	}
 
 	private static void requireDistinctMethods(List<MethodSpec> methods) {
@@ -183,10 +207,13 @@ public class ForecastService {
 		List<ForecastDetail.Actual> actuals = execution.getInputs().stream()
 				.map(input -> new ForecastDetail.Actual(input.getPeriod(), Decimals.plain(input.getValue())))
 				.toList();
+		String executedByUsername = users.usernames(List.of(execution.getUserId())).get(execution.getUserId());
 		return new ForecastDetail(execution.getId(), execution.getSeriesId(),
 				series == null ? null : series.productCode(), productName(series),
 				series == null ? null : series.measure(), series == null ? null : series.unit(),
-				execution.getDataVersion(), execution.getExecutedAt(), execution.getUserId(),
+				execution.getDataVersion(), execution.getExecutedAt(), execution.getUserId(), executedByUsername,
+				actuals.isEmpty() ? null : actuals.getFirst().period(),
+				actuals.isEmpty() ? null : actuals.getLast().period(),
 				execution.getCalculationVersion(), execution.getEvaluationStart(), actuals,
 				execution.getMethods().stream().map(ForecastService::methodResult).toList());
 	}

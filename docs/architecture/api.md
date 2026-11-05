@@ -104,7 +104,7 @@ Reglas de la carga (todo el lote o nada, [ADR 07](adr/0007-reglas-de-calculo.md)
 
 | Método | Ruta                          | Permiso            | Cuerpo / respuesta |
 |--------|-------------------------------|--------------------|--------------------|
-| POST   | `/api/v1/forecasts`           | `forecast:execute` | `{seriesId, methods: [...]}` → 201 `ForecastDetail` (200 si se reenvía la misma `Idempotency-Key`) |
+| POST   | `/api/v1/forecasts`           | `forecast:execute` | `{seriesId, from?, to?, methods: [...]}` → 201 `ForecastDetail` (200 si se reenvía la misma `Idempotency-Key`) |
 | GET    | `/api/v1/forecasts?seriesId=` | `forecast:read`    | → últimas 50 `[ForecastSummary]`, de la más reciente a la más antigua; `seriesId` opcional |
 | GET    | `/api/v1/forecasts/{id}`      | `forecast:read`    | → `ForecastDetail` (404 si no existe) |
 
@@ -126,11 +126,15 @@ parámetros; los demás se ignoran:
 | `weights` (ponderado) | Cada uno en (0, 1], suma 1, hasta 10 decimales. `weights[0]` (K0) es el peso del mes **más reciente** |
 | `alpha`, `beta` | Estrictamente entre 0 y 1, hasta 10 decimales |
 
-Errores: parámetro faltante o fuera de rango, método repetido o `Idempotency-Key` con formato inválido →
+`from` y `to` (opcionales, `AAAA-MM`) eligen el periodo histórico (requisito funcional 3 de la Entrega 1); sin
+ellos se usa toda la serie. El pronóstico es del mes siguiente a `to`, aunque ese mes ya tenga dato cargado.
+
+Errores: `from` o `to` fuera de los meses cargados o `to` anterior a `from` → 400 con `errors[].field`
+`from`/`to`; parámetro faltante o fuera de rango, método repetido o `Idempotency-Key` con formato inválido →
 400 `validation` con `errors[].field` como `methods[2].alpha`; serie sin datos → 422; serie inexistente → 404.
 
 `ForecastDetail`: `{ id, seriesId, productCode, productName, measure, unit, dataVersion, executedAt,
-executedBy, calculationVersion, evaluationStart, actuals: [{period, value}], methods: [MethodResult] }`.
+executedBy, executedByUsername, periodFrom, periodTo, calculationVersion, evaluationStart, actuals: [{period, value}], methods: [MethodResult] }`.
 `MethodResult`: `{ method, periods, weights, alpha, beta, forecasts: [{period, forecast, actual}],
 nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, mapeExcluded }`.
 
@@ -139,7 +143,9 @@ nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, map
 - `mad` está en unidades; `mapePercent` en porcentaje. Ambos son nulos si no son calculables.
   `mapeExcluded` cuenta los meses con real 0, que no entran al MAPE.
 - `dataVersion` es la carga de históricos usada y `actuals` la instantánea de reales: la ejecución no
-  cambia aunque después se agreguen meses. `executedBy` es el id del usuario.
+  cambia aunque después se agreguen meses. `periodFrom` y `periodTo` son el primer y el último mes de
+  `actuals`. `executedBy` es el id del usuario y `executedByUsername` su nombre (servicio público
+  `auth.application.UserDirectory`; nulo si la cuenta ya no existe).
 - `Idempotency-Key` (opcional, 1–64 caracteres `A-Z a-z 0-9 _ -`): el frontend envía una clave nueva por
   cada clic en "Ejecutar"; un reenvío con la misma clave devuelve la ejecución original sin recalcular.
 
@@ -190,10 +196,12 @@ línea y la ejecución de pronósticos quedó solo para el administrador.
 | `forecast:execute` |  ✔    |         |         |
 | `forecast:read`    |  ✔    |   ✔     |   ✔     |
 | `indicators:read`  |  ✔    |   ✔     |   ✔     |
+| `forecast:export`  |  ✔    |   ✔     |         |
 
 - **Administrador:** todos los permisos; es el único que ejecuta pronósticos y administra cuentas.
 - **Planeador:** consulta históricos, pronósticos e indicadores; es quien extrae la información de los
-  pronósticos (la exportación, cuando exista, será suya y del administrador).
+  pronósticos: exporta (`forecast:export`) a Excel, PDF, CSV e imagen, igual que el administrador. La
+  exportación se arma en el navegador con los datos de la API; el permiso decide quién ve los botones.
 - **Analista:** carga y consulta históricos; consulta pronósticos e indicadores.
 - Todos los que consultan ven todas las referencias (respuesta 24 de Industrial).
 
