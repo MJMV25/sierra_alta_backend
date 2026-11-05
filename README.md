@@ -133,7 +133,9 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
   comparativa: con Spokane, Holt es el mejor por MAD y MAPE y los 4 cumplen el 10 %; con ACME, el
   ponderado es el mejor y ninguno cumple (MAPE de 27 % a 37 %); empates a 6 decimales, MAPE igual al
   umbral (no cumple), MAPE no calculable (sin evaluar) y ejecución inexistente (404).
-  **Pendiente:** aplicar V5 y repetir la prueba contra PostgreSQL.
+- Fases 2 y 3 contra PostgreSQL 17 (05-11-2026): Flyway aplicó V4 y V5 sobre la base con los
+  históricos ya cargados; `docs/pruebas/ejecutar-pruebas-api.sh` a través del proxy del frontend:
+  31 aprobadas, 0 fallidas, 0 bloqueadas. Cada ejecución guarda `umbral_mape = 0,10`.
 - `mvnw verify` (29-10-2026, fase 2): 139 pruebas, sin advertencias de `-Xlint:all`. Además de las de
   autenticación y roles (alcance por rol, login, matriz 4 roles × 10 endpoints, CSRF, auditoría,
   administración de cuentas, permiso exigido también en el caso de uso), incluye:
