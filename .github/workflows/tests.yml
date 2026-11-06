@@ -21,6 +21,8 @@ jobs:
     name: Pruebas y cobertura
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      lineas: ${{ steps.porcentaje.outputs.lineas }}
     steps:
       - name: Descargar el código
         uses: actions/checkout@v4
@@ -38,6 +40,14 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+
+      - name: Porcentaje de líneas cubiertas
+        id: porcentaje
+        if: always()
+        run: |
+          csv=target/site/jacoco/jacoco.csv
+          [ -f "$csv" ] || exit 0
+          awk -F, 'NR > 1 { m += $8; c += $9 } END { if (c + m > 0) printf "lineas=%.1f\n", 100 * c / (c + m) }' "$csv" >> "$GITHUB_OUTPUT"
 
       - name: Resumen de cobertura
         if: always()
@@ -78,3 +88,29 @@ jobs:
           path: target/surefire-reports/
           if-no-files-found: warn
           retention-days: 30
+
+  # Badge de cobertura del README: en cada push a main publica coverage.json (formato de shields.io)
+  # en la rama `badges`, que solo guarda ese archivo. Sin servicios externos ni secretos.
+  badge:
+    name: Badge de cobertura
+    needs: tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.tests.outputs.lineas != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Publicar coverage.json en la rama badges
+        env:
+          LINEAS: ${{ needs.tests.outputs.lineas }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          color=$(awk -v p="$LINEAS" 'BEGIN { print (p >= 90 ? "brightgreen" : p >= 80 ? "green" : p >= 70 ? "yellowgreen" : p >= 60 ? "yellow" : "red") }')
+          mkdir badges && cd badges
+          git init -q -b badges
+          printf '{"schemaVersion":1,"label":"cobertura","message":"%s %%","color":"%s"}\n' "$LINEAS" "$color" > coverage.json
+          git add coverage.json
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Badge de cobertura: $LINEAS % de líneas (${GITHUB_SHA::7})"
+          # La rama tiene un solo commit: se reemplaza en cada publicación.
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
