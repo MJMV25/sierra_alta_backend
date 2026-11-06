@@ -132,7 +132,8 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 - `mvnw verify` compila con `-Xlint:all` (advertencias de javac visibles) y ejecuta todas las pruebas;
   es lo mismo que corre la integración continua (`.github/workflows/tests.yml`), que además deja el
   reporte de cobertura en `target/site/jacoco/index.html` (en GitHub: artefacto `cobertura-backend` y resumen
-  en la página de la ejecución).
+  en la página de la ejecución). Exige un mínimo de 90 % de líneas cubiertas (`cobertura.lineas.minimo` en
+  `pom.xml`): por debajo, `verify` y el pipeline fallan.
 - `.editorconfig` fija codificación, finales de línea e indentación para cualquier editor.
 - Reglas de desarrollo del proyecto: [PROJECT_RULES.md](PROJECT_RULES.md).
 
