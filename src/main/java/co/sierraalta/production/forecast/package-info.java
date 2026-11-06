@@ -1,14 +1,14 @@
 /**
  * Módulo de pronósticos: coordina la ejecución y conserva entradas y resultados.
  *
- * <p>El servicio {@code EjecutarPronostico} actuará como Facade (ADR 04): consulta la serie mediante el
- * servicio público de {@code history}, invoca el cálculo de promedio móvil simple (componente de dominio
- * aislado, sin dependencias web ni SQL), entrega los pares real-pronosticado a {@code indicators} y guarda
- * ejecución, instantánea de entradas, resultados y métricas en una sola transacción.
+ * <p>{@code application.ForecastService} es el Facade (ADR 04): consulta la serie mediante el servicio
+ * público de {@code history}, ejecuta los métodos ({@code domain.ForecastMethod}, Strategy), entrega los
+ * pares real-pronosticado a {@code indicators} y guarda ejecución, instantánea de entradas, resultados y
+ * métricas en una sola transacción. {@code indicators} nunca invoca a este módulo, para evitar ciclos: lee
+ * los indicadores guardados por su puerto {@code ExecutionIndicatorsSource}, que aquí implementa
+ * {@code application.ForecastIndicatorsSource}.
  *
- * <p>Strategy se aplaza hasta que exista un segundo método validado. {@code indicators} nunca invoca a
- * este módulo, para evitar ciclos.
- *
- * <p>Estado: esquema creado (migración V2) y endpoints protegidos por rol; pendiente de implementación.
+ * <p>Estado: funcional (fase 2). Los cuatro métodos reproducen el Excel corregido también por la API
+ * ({@code ForecastApiTest}). Las ejecuciones son inmutables ({@code @Immutable}).
  */
 package co.sierraalta.production.forecast;

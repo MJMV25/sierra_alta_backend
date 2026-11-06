@@ -17,7 +17,9 @@ public enum Permission {
 	/** Consultar ejecuciones y resultados de pronóstico. */
 	FORECAST_READ("forecast:read"),
 	/** Consultar indicadores de error (MAD, MAPE). */
-	INDICATORS_READ("indicators:read");
+	INDICATORS_READ("indicators:read"),
+	/** Descargar pronósticos, gráficos e indicadores (Excel, PDF, CSV, imagen); respuesta 23 de Industrial. */
+	FORECAST_EXPORT("forecast:export");
 
 	private final String authority;
 

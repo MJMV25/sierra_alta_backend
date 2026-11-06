@@ -73,33 +73,136 @@ Reglas de administración: no hay autorregistro; los nombres de usuario se guard
 desactivarse ni cambiarse el rol a sí mismo; siempre queda al menos un administrador activo; las
 cuentas no se eliminan, se desactivan.
 
-### history, forecast, indicators (contrato y permisos; responden 501)
+### history (funcional)
 
-| Método | Ruta                                       | Permiso             |
-|--------|--------------------------------------------|---------------------|
-| GET    | `/api/v1/history/products`                    | `history:read`      |
-| GET    | `/api/v1/history/series/{id}/observations`    | `history:read`      |
-| POST   | `/api/v1/history/series/{id}/observations`    | `history:write`     |
-| POST   | `/api/v1/forecasts`                           | `forecast:execute`  |
-| GET    | `/api/v1/forecasts`                           | `forecast:read`     |
-| GET    | `/api/v1/forecasts/{id}`                      | `forecast:read`     |
-| GET    | `/api/v1/indicators/executions/{id}`          | `indicators:read`   |
+| Método | Ruta                                          | Permiso         | Cuerpo / respuesta |
+|--------|-----------------------------------------------|-----------------|--------------------|
+| GET    | `/api/v1/history/products`                    | `history:read`  | → `[ProductSummary]` |
+| GET    | `/api/v1/history/series/{id}/observations`    | `history:read`  | → `SeriesObservations` (404 si no existe) |
+| POST   | `/api/v1/history/series/{id}/observations`    | `history:write` | `{observations: [{period, value}]}` → 201 `LoadSummary` |
+
+`ProductSummary`: `{ id, code, name, series: [{ id, measure, periodicity, unit, firstPeriod, lastPeriod,
+observations, dataVersion }] }`; solo referencias activas, ordenadas por nombre. Una serie sin datos trae
+`observations: 0` y periodos y `dataVersion` nulos.
+`SeriesObservations`: `{ seriesId, productCode, productName, measure, periodicity, unit, dataVersion,
+observations: [{ period: "2026-09", value: 155 }] }`, del mes más antiguo al más reciente.
+`LoadSummary`: `{ loadId, seriesId, observations, firstPeriod, lastPeriod, loadedAt }`.
+
+Los periodos usan el formato `AAAA-MM`. `dataVersion` es el id de la última carga de la serie: la
+"versión de datos" que acompañará a pronósticos y exportaciones. `measure` es `PRODUCCION` en las 4
+referencias: la interfaz debe rotularla como producción (ADR 07).
+
+Reglas de la carga (todo el lote o nada, [ADR 07](adr/0007-reglas-de-calculo.md)):
+
+| Caso | HTTP | `code` |
+|------|------|--------|
+| Lote vacío o con más de 240 meses; periodo que no es `AAAA-MM`; cantidad nula, negativa o con más de 4 decimales | 400 | `validation` (`errors[].field` como `observations[2].value`) |
+| Mes que ya tiene dato en la serie | 409 | `conflict` |
+| Mes repetido dentro del lote, mes posterior al mes en curso (hora de Colombia) o carga que dejaría meses sin dato | 422 | `business-rule` (el detalle nombra los meses) |
+
+### forecast (funcional)
+
+| Método | Ruta                          | Permiso            | Cuerpo / respuesta |
+|--------|-------------------------------|--------------------|--------------------|
+| POST   | `/api/v1/forecasts`           | `forecast:execute` | `{seriesId, from?, to?, methods: [...]}` → 201 `ForecastDetail` (200 si se reenvía la misma `Idempotency-Key`) |
+| GET    | `/api/v1/forecasts?seriesId=` | `forecast:read`    | → últimas 50 `[ForecastSummary]`, de la más reciente a la más antigua; `seriesId` opcional |
+| GET    | `/api/v1/forecasts/{id}`      | `forecast:read`    | → `ForecastDetail` (404 si no existe) |
+
+Una ejecución corre de 1 a 4 métodos **distintos** sobre la misma serie y los evalúa en la misma ventana
+(desde el primer periodo en que todos tienen pronóstico, como el Excel). Cada método lleva solo sus
+parámetros; los demás se ignoran:
+
+```json
+{ "seriesId": 1, "methods": [
+    { "method": "SIMPLE_MOVING_AVERAGE", "periods": 5 },
+    { "method": "WEIGHTED_MOVING_AVERAGE", "weights": [0.3, 0.2, 0.2, 0.2, 0.1] },
+    { "method": "EXPONENTIAL_SMOOTHING", "alpha": 0.05 },
+    { "method": "TREND_ADJUSTED_EXPONENTIAL_SMOOTHING", "alpha": 0.0025, "beta": 0.99 } ] }
+```
+
+| Parámetro | Regla ([ADR 07](adr/0007-reglas-de-calculo.md)) |
+|-----------|------------------------------------------------|
+| `periods` (promedio simple) | Entero ≥ 1 y ≤ meses cargados. Con n igual al total solo hay pronóstico siguiente y los indicadores son nulos |
+| `weights` (ponderado) | Cada uno en (0, 1], suma 1, hasta 10 decimales. `weights[0]` (K0) es el peso del mes **más reciente** |
+| `alpha`, `beta` | Estrictamente entre 0 y 1, hasta 10 decimales |
+
+`from` y `to` (opcionales, `AAAA-MM`) eligen el periodo histórico (requisito funcional 3 de la Entrega 1); sin
+ellos se usa toda la serie. El pronóstico es del mes siguiente a `to`, aunque ese mes ya tenga dato cargado.
+
+Errores: `from` o `to` fuera de los meses cargados o `to` anterior a `from` → 400 con `errors[].field`
+`from`/`to`; parámetro faltante o fuera de rango, método repetido o `Idempotency-Key` con formato inválido →
+400 `validation` con `errors[].field` como `methods[2].alpha`; serie sin datos → 422; serie inexistente → 404.
+
+`ForecastDetail`: `{ id, seriesId, productCode, productName, measure, unit, dataVersion, executedAt,
+executedBy, executedByUsername, periodFrom, periodTo, calculationVersion, evaluationStart, actuals: [{period, value}], methods: [MethodResult] }`.
+`MethodResult`: `{ method, periods, weights, alpha, beta, forecasts: [{period, forecast, actual}],
+nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, mapeExcluded }`.
+
+- `forecasts` trae todos los pronósticos que tienen real, también los anteriores a `evaluationStart`
+  (el suavizamiento pronostica desde el mes 2); MAD y MAPE solo usan los meses desde `evaluationStart`.
+- `mad` está en unidades; `mapePercent` en porcentaje. Ambos son nulos si no son calculables.
+  `mapeExcluded` cuenta los meses con real 0, que no entran al MAPE.
+- `dataVersion` es la carga de históricos usada y `actuals` la instantánea de reales: la ejecución no
+  cambia aunque después se agreguen meses. `periodFrom` y `periodTo` son el primer y el último mes de
+  `actuals`. `executedBy` es el id del usuario y `executedByUsername` su nombre (servicio público
+  `auth.application.UserDirectory`; nulo si la cuenta ya no existe).
+- `Idempotency-Key` (opcional, 1–64 caracteres `A-Z a-z 0-9 _ -`): el frontend envía una clave nueva por
+  cada clic en "Ejecutar"; un reenvío con la misma clave devuelve la ejecución original sin recalcular.
+
+`ForecastSummary`: `{ id, seriesId, productName, executedAt, executedBy, dataVersion, evaluationStart,
+methods: ["SIMPLE_MOVING_AVERAGE", ...] }`.
+
+### indicators (funcional)
+
+| Método | Ruta                                   | Permiso           | Respuesta |
+|--------|----------------------------------------|-------------------|-----------|
+| GET    | `/api/v1/indicators/executions/{id}`   | `indicators:read` | → `ExecutionComparison` (404 si la ejecución no existe) |
+
+Tabla comparativa de los métodos de una ejecución guardada ([ADR 07](adr/0007-reglas-de-calculo.md),
+preguntas 21 y 22):
+
+```json
+{ "executionId": 7, "seriesId": 1, "evaluationFrom": "2020-06", "evaluationTo": "2022-06",
+  "mapeThresholdPercent": 10,
+  "bestByMad": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"], "bestByMape": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"],
+  "methods": [ { "method": "SIMPLE_MOVING_AVERAGE", "mad": 20.584, "mapePercent": 7.5031047806,
+                 "pairsUsed": 25, "mapeExcluded": 0, "bestByMad": false, "bestByMape": false,
+                 "status": "CUMPLE" }, ... ] }
+```
+
+- `evaluationFrom`–`evaluationTo`: meses evaluados; nulos si ningún mes tuvo pronóstico de todos los
+  métodos. Se muestran siempre junto a los indicadores, porque la ventana común depende de los métodos
+  ejecutados juntos.
+- Ni el MAD ni el MAPE mandan: `bestByMad` y `bestByMape` señalan el menor de cada uno por separado.
+  Si varios coinciden a 6 decimales, todos quedan marcados. Un indicador nulo nunca es el mejor.
+- `status` frente al umbral del MAPE: `CUMPLE` (menor que el umbral), `NO_CUMPLE` (igual o mayor),
+  `SIN_EVALUAR` (MAPE no calculable) o `SIN_CRITERIO` (ejecución anterior a la fase 3, sin umbral).
+- El umbral sale de `MAPE_THRESHOLD_PERCENT` (10 por defecto) y se guarda en cada ejecución, así que
+  cambiarlo solo afecta a las ejecuciones nuevas. El MAD no tiene umbral propio.
 
 Cualquier ruta no declarada en `SecurityConfig` se deniega (403 con sesión, 401 sin ella).
 
 ## Matriz de alcance por rol
 
-Definida en `RoleCode` (tabla 2 del documento de arquitectura) y verificada por `RoleScopeTest`.
+Definida en `RoleCode` y verificada por `RoleScopeTest`. Parte de la tabla 2 del documento de arquitectura,
+ajustada por el equipo el 2026-11-05 ([ADR 05](adr/0005-alcance-de-roles.md)): se eliminó el rol Supervisor de
+línea y la ejecución de pronósticos quedó solo para el administrador.
 
-| Permiso            | ADMIN | PLANNER | SUPERVISOR | ANALYST |
-|--------------------|:-----:|:-------:|:----------:|:-------:|
-| `users:manage`     |  ✔    |         |            |         |
-| `history:read`     |       |   ✔     |    ✔       |   ✔     |
-| `history:write`    |       |         |            |   ✔     |
-| `forecast:execute` |       |   ✔     |            |   ✔     |
-| `forecast:read`    |       |   ✔     |    ✔       |   ✔     |
-| `indicators:read`  |       |   ✔     |    ✔       |   ✔     |
+| Permiso            | ADMIN | PLANNER | ANALYST |
+|--------------------|:-----:|:-------:|:-------:|
+| `users:manage`     |  ✔    |         |         |
+| `history:read`     |  ✔    |   ✔     |   ✔     |
+| `history:write`    |  ✔    |         |   ✔     |
+| `forecast:execute` |  ✔    |         |         |
+| `forecast:read`    |  ✔    |   ✔     |   ✔     |
+| `indicators:read`  |  ✔    |   ✔     |   ✔     |
+| `forecast:export`  |  ✔    |   ✔     |         |
 
-El administrador **no** obtiene automáticamente permisos sobre históricos ni pronósticos.
-Pendiente con Industrial: filtro por línea del supervisor, umbral de intentos fallidos y
-procedimiento de recuperación de acceso.
+- **Administrador:** todos los permisos; es el único que ejecuta pronósticos y administra cuentas.
+- **Planeador:** consulta históricos, pronósticos e indicadores; es quien extrae la información de los
+  pronósticos: exporta (`forecast:export`) a Excel, PDF, CSV e imagen, igual que el administrador. La
+  exportación se arma en el navegador con los datos de la API; el permiso decide quién ve los botones.
+- **Analista:** carga y consulta históricos; consulta pronósticos e indicadores.
+- Todos los que consultan ven todas las referencias (respuesta 24 de Industrial).
+
+Pendiente con Industrial: umbral de intentos fallidos y procedimiento de recuperación de acceso.

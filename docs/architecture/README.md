@@ -42,11 +42,17 @@ history  ◄── forecast ──►  indicators         auth protege los acces
 
 Migraciones Flyway en `src/main/resources/db/migration`:
 
-- `V1__identidad_y_auditoria.sql`: `rol`, `usuario`, `evento` + catálogo de los 4 roles.
+- `V1__identidad_y_auditoria.sql`: `rol`, `usuario`, `evento` + catálogo de los 4 roles iniciales (V6 elimina SUPERVISOR).
 - `V2__historicos_y_pronosticos.sql`: `producto`, `serie`, `observacion`, `ejecucion`, `entrada`,
   `resultado`, `metrica` con las restricciones de integridad del documento (periodo mensual normalizado,
   valores no negativos, una observación por serie y periodo, instantánea inmutable de entradas, métricas
   con pares usados/excluidos y valor nulo cuando no es calculable).
+- `V3__cargas_y_catalogo.sql`: `carga` (autor, fecha y rango de cada lote; su id es la versión de datos),
+  `observacion.carga_id` y el catálogo de las 4 referencias con su serie de producción mensual. Las
+  cantidades no se versionan: se cargan por la API ([docs/datos](../datos/README.md)).
+- `V4__ejecuciones_por_metodo.sql`: una ejecución agrupa de 1 a 4 métodos (`metodo_ejecutado`, `peso`)
+  con sus `resultado` y `metrica`; `ejecucion` guarda la versión de datos, la ventana de evaluación y la
+  clave de idempotencia. Reemplaza el diseño de un solo método de V2 (sus tablas de resultados estaban vacías).
 
 Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunca editando una aplicada.
 
@@ -61,6 +67,7 @@ Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunc
 - [ADR 01 — Monolito modular multicapa](adr/0001-monolito-modular.md)
 - [ADR 02 — Frontend React separado y API REST con sesión](adr/0002-react-y-api-rest.md)
 - [ADR 03 — PostgreSQL, Flyway e instantánea por ejecución](adr/0003-postgresql-y-trazabilidad.md)
-- [ADR 04 — Facade para el pronóstico, Strategy aplazado](adr/0004-facade-y-strategy.md)
+- [ADR 04 — Facade y Strategy para el pronóstico](adr/0004-facade-y-strategy.md)
 - [ADR 05 — Alcance de roles en código y sesión revalidada](adr/0005-alcance-de-roles.md)
 - [ADR 06 — Cuentas de base de datos con privilegio mínimo](adr/0006-cuentas-de-base-de-datos.md)
+- [ADR 07 — Reglas de cálculo, evaluación y datos acordadas con Industrial](adr/0007-reglas-de-calculo.md)

@@ -42,6 +42,9 @@ management:
       show-details: never
 
 app:
+  # Umbral de aceptación del MAPE en porcentaje (ADR 07, pregunta 21): cumple si el MAPE es menor.
+  indicators:
+    mape-threshold-percent: ${MAPE_THRESHOLD_PERCENT:10}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   bootstrap:

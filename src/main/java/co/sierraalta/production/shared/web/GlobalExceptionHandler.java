@@ -6,6 +6,7 @@ import java.util.List;
 import co.sierraalta.production.shared.error.BusinessRuleException;
 import co.sierraalta.production.shared.error.ConflictException;
 import co.sierraalta.production.shared.error.FeatureNotImplementedException;
+import co.sierraalta.production.shared.error.InvalidFieldException;
 import co.sierraalta.production.shared.error.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem(HttpStatus.UNPROCESSABLE_CONTENT, "business-rule", ex.getMessage());
 	}
 
+	@ExceptionHandler(InvalidFieldException.class)
+	ProblemDetail handleInvalidField(InvalidFieldException ex) {
+		return validationProblem(List.of(new FieldError(ex.field(), ex.getMessage())));
+	}
+
 	@ExceptionHandler(FeatureNotImplementedException.class)
 	ProblemDetail handleNotImplemented(FeatureNotImplementedException ex) {
 		return problem(HttpStatus.NOT_IMPLEMENTED, "not-implemented", ex.getMessage());
@@ -105,9 +111,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		List<FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
 				.map(error -> new FieldError(error.getField(), error.getDefaultMessage()))
 				.toList();
+		return ResponseEntity.badRequest().body(validationProblem(errors));
+	}
+
+	private static ProblemDetail validationProblem(List<FieldError> errors) {
 		ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "validation", "La solicitud contiene datos inválidos.");
 		body.setProperty("errors", errors);
-		return ResponseEntity.badRequest().body(body);
+		return body;
 	}
 
 	/**

@@ -27,20 +27,19 @@ import org.springframework.mock.web.MockHttpSession;
 /**
  * Prueba de acceso directo por rol: cada rol contra cada endpoint protegido.
  *
- * <p>Permitido: el endpoint responde (200 en administración, 501 en módulos aún no implementados).
- * Denegado: 403. Sin sesión: 401. La matriz replica la tabla 2 del documento de arquitectura.
+ * <p>Permitido: el endpoint responde (200 en consultas; 404 en un recurso inexistente; 400 en las acciones,
+ * que se envían sin cuerpo).
+ * Denegado: 403. Sin sesión: 401. La matriz replica el alcance de RoleCode (ADR 05).
  */
 class RoleScopeTest extends ApiIntegrationTest {
 
 	private static final Set<String> ADMIN_ONLY = Set.of("ADMIN");
-	private static final Set<String> READERS = Set.of("PLANNER", "SUPERVISOR", "ANALYST");
-	private static final Set<String> EXECUTORS = Set.of("PLANNER", "ANALYST");
-	private static final Set<String> LOADERS = Set.of("ANALYST");
+	private static final Set<String> READERS = Set.of("ADMIN", "PLANNER", "ANALYST");
+	private static final Set<String> LOADERS = Set.of("ADMIN", "ANALYST");
 
 	private static final Map<String, String> USER_BY_ROLE = Map.of(
 			"ADMIN", ADMIN,
 			"PLANNER", "planeador",
-			"SUPERVISOR", "supervisor",
 			"ANALYST", "analista");
 
 	record Endpoint(HttpMethod method, String path, Set<String> allowedRoles, int allowedStatus) {
@@ -55,13 +54,13 @@ class RoleScopeTest extends ApiIntegrationTest {
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/users", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/roles", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/security-events", ADMIN_ONLY, 200),
-			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 501),
-			new Endpoint(HttpMethod.GET, "/api/v1/history/series/1/observations", READERS, 501),
-			new Endpoint(HttpMethod.POST, "/api/v1/history/series/1/observations", LOADERS, 501),
-			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", EXECUTORS, 501),
-			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 501),
-			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/1", READERS, 501),
-			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/1", READERS, 501));
+			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 200),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/series/1/observations", READERS, 200),
+			new Endpoint(HttpMethod.POST, "/api/v1/history/series/1/observations", LOADERS, 400),
+			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", ADMIN_ONLY, 400),
+			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 200),
+			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/999999", READERS, 404),
+			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/999999", READERS, 404));
 
 	static Stream<Arguments> roleEndpointMatrix() {
 		return USER_BY_ROLE.keySet().stream().sorted()
@@ -104,7 +103,7 @@ class RoleScopeTest extends ApiIntegrationTest {
 
 	@Test
 	void deniedAccessReturnsProblemDetailAndIsAudited() throws Exception {
-		MockHttpSession session = login("supervisor", DEMO_PASSWORD);
+		MockHttpSession session = login("planeador", DEMO_PASSWORD);
 		long before = events.count();
 
 		mvc.perform(request(HttpMethod.POST, "/api/v1/forecasts").session(session).with(xsrf()))
