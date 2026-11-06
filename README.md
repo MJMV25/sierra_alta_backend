@@ -1,5 +1,8 @@
 # Sierra Alta — Backend del sistema de pronóstico de producción
 
+[![Tests](https://github.com/MJMV25/sierra_alta_backend/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/MJMV25/sierra_alta_backend/actions/workflows/tests.yml)
+[![Cobertura](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/MJMV25/sierra_alta_backend/badges/coverage.json)](https://github.com/MJMV25/sierra_alta_backend/actions/workflows/tests.yml)
+
 API REST del sistema web de pronóstico de producción (Sierra Alta S.A.S. BIC, marca Eleven Pro).
 Monolito modular multicapa en **Java 21 + Spring Boot 4.1 + Spring Security 7 + PostgreSQL**.
 El frontend React + Vite vive en un repositorio/carpeta aparte y consume esta API.
