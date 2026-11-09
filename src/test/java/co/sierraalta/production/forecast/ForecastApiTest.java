@@ -156,6 +156,61 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.methods[*].status", everyItem(is("NO_CUMPLE"))));
 	}
 
+	/** Lo que verá Industrial en la aplicación: los casos que deja V7 dan la hoja RESUMEN del Excel. */
+	@Test
+	void excelTestCasesLoadedByTheMigrationGiveTheSummarySheet() throws Exception {
+		String spokaneWithRegression = SPOKANE_METHODS.replace("\"beta\": 0.99}]",
+				"\"beta\": 0.99}, {\"method\": \"LINEAR_REGRESSION\"}]");
+		execute(excelCase("CASO-1-SPOKANE"), spokaneWithRegression)
+				.andExpect(status().isCreated())
+				// La regresión no recorta la ventana: se sigue evaluando desde t = 6.
+				.andExpect(jsonPath("$.methods[4].method").value("LINEAR_REGRESSION"))
+				.andExpect(jsonPath("$.methods[4].periods").value(nullValue()))
+				.andExpect(jsonPath("$.methods[4].alpha").value(nullValue()))
+				.andExpect(jsonPath("$.methods[4].forecasts.length()").value(30))
+				.andExpect(jsonPath("$.methods[4].mad", closeTo(15.897, 0.001)))
+				.andExpect(jsonPath("$.methods[4].mapePercent", closeTo(5.7935, 0.0001)))
+				.andExpect(jsonPath("$.methods[4].pairsUsed").value(25))
+				.andExpect(jsonPath("$.periodicity").value("PERIODO"))
+				.andExpect(jsonPath("$.measure").value("DEMANDA"))
+				.andExpect(jsonPath("$.actuals.length()").value(30))
+				.andExpect(jsonPath("$.evaluationStart").value("2000-06"))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(20.583999999999996, EXCEL)))
+				.andExpect(jsonPath("$.methods[1].mad", closeTo(19.800000000000008, EXCEL)))
+				.andExpect(jsonPath("$.methods[2].mad", closeTo(16.252331083901609, EXCEL)))
+				.andExpect(jsonPath("$.methods[3].mad", closeTo(16.060778575533561, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mapePercent", closeTo(7.5031047805661125, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[1].mapePercent", closeTo(7.2199705350531052, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[2].mapePercent", closeTo(5.8831943092208468, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[3].mapePercent", closeTo(5.7923763097286106, EXCEL_PERCENT)));
+
+		String acme = execute(excelCase("CASO-2-ACME"), """
+				[{"method": "SIMPLE_MOVING_AVERAGE", "periods": 4},
+				 {"method": "WEIGHTED_MOVING_AVERAGE", "weights": [0.1, 0.2, 0.3, 0.4]},
+				 {"method": "EXPONENTIAL_SMOOTHING", "alpha": 0.6},
+				 {"method": "TREND_ADJUSTED_EXPONENTIAL_SMOOTHING", "alpha": 0.3, "beta": 0.1},
+				 {"method": "LINEAR_REGRESSION"}]""")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.evaluationStart").value("2000-05"))
+				.andExpect(jsonPath("$.methods[4].mad", closeTo(118.3993, 0.0001)))
+				.andExpect(jsonPath("$.methods[4].mapePercent", closeTo(35.9398, 0.0001)))
+				.andExpect(jsonPath("$.methods[4].nextForecast.forecast", closeTo(600.5, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(116.66666666666667, EXCEL)))
+				.andExpect(jsonPath("$.methods[1].mad", closeTo(106.9047619047619, EXCEL)))
+				.andExpect(jsonPath("$.methods[2].mad", closeTo(147.95104085609503, EXCEL)))
+				.andExpect(jsonPath("$.methods[3].mad", closeTo(132.38013472381994, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mapePercent", closeTo(29.588619830216473, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[1].mapePercent", closeTo(27.273668130810985, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[2].mapePercent", closeTo(37.192699923148193, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[3].mapePercent", closeTo(32.096485371186784, EXCEL_PERCENT)))
+				.andReturn().getResponse().getContentAsString();
+
+		mvc.perform(get("/api/v1/forecasts").param("seriesId", String.valueOf(excelCase("CASO-2-ACME")))
+					.session(planner()))
+				.andExpect(jsonPath("$[0].id").value(idOf(acme)))
+				.andExpect(jsonPath("$[0].periodicity").value("PERIODO"));
+	}
+
 	@Test
 	void comparisonMarksTiesAndMethodsWithoutMape() throws Exception {
 		// SMA(1) y ponderado con un solo peso pronostican igual: empatan y ambos son los mejores (MAD 10,

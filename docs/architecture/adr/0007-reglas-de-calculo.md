@@ -48,8 +48,10 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
   El sistema sigue distinguiendo "sin fila" (dato no cargado) de un 0 cargado.
 - **Valores atípicos** (16): son pedidos reales (producción bajo pedido). El sistema no los modifica.
 - **Medida** (17): se pronostica la producción como demanda, y la interfaz debe decir "producción".
-- **Periodicidad** (18): solo mensual para la empresa. Spokane (semanal) y ACME (trimestral) existen solo
-  como casos de prueba automatizados, no como series de la base de datos.
+- **Periodicidad** (18): solo mensual para la empresa. ~~Spokane (semanal) y ACME (trimestral) existen solo
+  como casos de prueba automatizados, no como series de la base de datos.~~ Reemplazado el 2026-11-06 por el
+  [ADR 09](0009-verificacion-con-datos-del-excel.md): en la fase de verificación ambos casos están en la base
+  con periodicidad `PERIODO` (t = 1, 2, 3…), en lugar de los datos de la empresa.
 - **Carga** (19): el analista agrega los datos de cada mes nuevo por la API. Como los métodos suponen
   meses consecutivos, una serie nunca queda con huecos: la carga entra completa o se rechaza, sin meses
   repetidos (409 si ya existían), sin meses futuros y sin dejar meses sin dato (`MonthlyLoadRules`).

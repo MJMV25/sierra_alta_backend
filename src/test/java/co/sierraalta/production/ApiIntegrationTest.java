@@ -60,6 +60,14 @@ public abstract class ApiIntegrationTest {
 		});
 	}
 
+	/** Id de la serie de un caso de prueba del Excel cargado por V7 ({@code CASO-1-SPOKANE}, {@code CASO-2-ACME}). */
+	protected long excelCase(String productCode) {
+		return transaction.execute(status -> entityManager
+				.createQuery("select s.id from Series s where s.product.code = :code", Long.class)
+				.setParameter("code", productCode)
+				.getSingleResult());
+	}
+
 	/** Inicia sesión por el endpoint real y devuelve la sesión HTTP resultante. */
 	protected MockHttpSession login(String username, String password) throws Exception {
 		return (MockHttpSession) mvc.perform(post("/api/v1/auth/login").with(xsrf())

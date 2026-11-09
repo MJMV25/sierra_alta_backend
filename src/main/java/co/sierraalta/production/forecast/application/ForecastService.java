@@ -27,6 +27,7 @@ import co.sierraalta.production.history.application.HistoryService;
 import co.sierraalta.production.history.application.ObservationValue;
 import co.sierraalta.production.history.application.SeriesObservations;
 import co.sierraalta.production.history.application.SeriesReference;
+import co.sierraalta.production.history.domain.Periodicity;
 import co.sierraalta.production.indicators.application.IndicatorsProperties;
 import co.sierraalta.production.indicators.domain.ErrorIndicators;
 import co.sierraalta.production.shared.Decimals;
@@ -127,6 +128,7 @@ public class ForecastService {
 				found.stream().map(ForecastExecution::getSeriesId).distinct().toList());
 		return found.stream()
 				.map(e -> new ForecastSummary(e.getId(), e.getSeriesId(), productName(references.get(e.getSeriesId())),
+						periodicity(references.get(e.getSeriesId())),
 						e.getExecutedAt(), e.getUserId(), e.getDataVersion(), e.getEvaluationStart(),
 						e.getMethods().stream().map(MethodRun::getMethod).toList()))
 				.toList();
@@ -210,7 +212,7 @@ public class ForecastService {
 		String executedByUsername = users.usernames(List.of(execution.getUserId())).get(execution.getUserId());
 		return new ForecastDetail(execution.getId(), execution.getSeriesId(),
 				series == null ? null : series.productCode(), productName(series),
-				series == null ? null : series.measure(), series == null ? null : series.unit(),
+				series == null ? null : series.measure(), periodicity(series), series == null ? null : series.unit(),
 				execution.getDataVersion(), execution.getExecutedAt(), execution.getUserId(), executedByUsername,
 				actuals.isEmpty() ? null : actuals.getFirst().period(),
 				actuals.isEmpty() ? null : actuals.getLast().period(),
@@ -243,6 +245,10 @@ public class ForecastService {
 
 	private static String productName(SeriesReference series) {
 		return series == null ? null : series.productName();
+	}
+
+	private static Periodicity periodicity(SeriesReference series) {
+		return series == null ? null : series.periodicity();
 	}
 
 	private static BigDecimal stored(double value) {

@@ -43,14 +43,31 @@ class HistoryApiTest extends ApiIntegrationTest {
 	private MockHttpSession analystSession;
 
 	@Test
-	void catalogListsTheFourReferencesAsMonthlyProduction() throws Exception {
+	void catalogHasTheExcelTestCasesInsteadOfTheCompanyReferences() throws Exception {
 		mvc.perform(get("/api/v1/history/products").session(login("planeador", DEMO_PASSWORD)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[*].code",
-						hasItems("JERSEY-PRO", "PANTALONETA-ESTELAR", "T-SHIRT-RUNNING", "JERSEY-SLIM")))
-				.andExpect(jsonPath("$[?(@.code == 'JERSEY-PRO')].series[0].measure").value("PRODUCCION"))
-				.andExpect(jsonPath("$[?(@.code == 'JERSEY-PRO')].series[0].periodicity").value("MENSUAL"))
-				.andExpect(jsonPath("$[?(@.code == 'JERSEY-PRO')].series[0].unit").value("UNIDADES"));
+				.andExpect(jsonPath("$[*].code", hasItems("CASO-1-SPOKANE", "CASO-2-ACME")))
+				.andExpect(jsonPath("$[?(@.code =~ /JERSEY.*|PANTALONETA.*|T-SHIRT.*/)]").isEmpty())
+				.andExpect(jsonPath("$[?(@.code == 'CASO-1-SPOKANE')].series[0].measure").value("DEMANDA"))
+				.andExpect(jsonPath("$[?(@.code == 'CASO-1-SPOKANE')].series[0].periodicity").value("PERIODO"))
+				.andExpect(jsonPath("$[?(@.code == 'CASO-1-SPOKANE')].series[0].unit").value("GALONES"))
+				.andExpect(jsonPath("$[?(@.code == 'CASO-1-SPOKANE')].series[0].observations").value(30))
+				.andExpect(jsonPath("$[?(@.code == 'CASO-1-SPOKANE')].series[0].lastPeriod").value("2002-06"))
+				.andExpect(jsonPath("$[?(@.code == 'CASO-2-ACME')].series[0].observations").value(25));
+
+		// Valores de la hoja DATOS: t = 1 se guarda como 2000-01.
+		mvc.perform(get("/api/v1/history/series/{id}/observations", excelCase("CASO-2-ACME")).session(analyst()))
+				.andExpect(jsonPath("$.observations[0].period").value("2000-01"))
+				.andExpect(jsonPath("$.observations[0].value").value(500))
+				.andExpect(jsonPath("$.observations[24].value").value(850));
+	}
+
+	@Test
+	void excelTestCasesDoNotAcceptLoads() throws Exception {
+		upload(excelCase("CASO-1-SPOKANE"), """
+				{"observations": [{"period": "2002-07", "value": 300}]}""")
+				.andExpect(status().isUnprocessableContent())
+				.andExpect(jsonPath("$.detail", containsString("caso de prueba")));
 	}
 
 	@Test

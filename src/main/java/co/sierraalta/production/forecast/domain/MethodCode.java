@@ -6,5 +6,7 @@ public enum MethodCode {
 	WEIGHTED_MOVING_AVERAGE,
 	EXPONENTIAL_SMOOTHING,
 	/** Holt. */
-	TREND_ADJUSTED_EXPONENTIAL_SMOOTHING
+	TREND_ADJUSTED_EXPONENTIAL_SMOOTHING,
+	/** Regresión lineal sobre t (sin parámetros). */
+	LINEAR_REGRESSION
 }

@@ -4,7 +4,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 /**
- * Pedido de ejecución: una serie, el periodo histórico a usar y de 1 a 4 métodos distintos, que se comparan
+ * Pedido de ejecución: una serie, el periodo histórico a usar y de 1 a 5 métodos distintos, que se comparan
  * en una ventana común. {@code from} y {@code to} son opcionales: nulos usan el primer y el último mes
  * cargados (requisito funcional 3 de la Entrega 1).
  */

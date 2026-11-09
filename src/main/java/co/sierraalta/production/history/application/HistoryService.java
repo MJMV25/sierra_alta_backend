@@ -14,12 +14,14 @@ import java.util.stream.Collectors;
 import co.sierraalta.production.history.domain.DataLoad;
 import co.sierraalta.production.history.domain.MonthlyLoadRules;
 import co.sierraalta.production.history.domain.Observation;
+import co.sierraalta.production.history.domain.Periodicity;
 import co.sierraalta.production.history.domain.Product;
 import co.sierraalta.production.history.domain.Series;
 import co.sierraalta.production.history.infrastructure.persistence.DataLoadRepository;
 import co.sierraalta.production.history.infrastructure.persistence.ObservationRepository;
 import co.sierraalta.production.history.infrastructure.persistence.SeriesRepository;
 import co.sierraalta.production.history.infrastructure.persistence.SeriesStats;
+import co.sierraalta.production.shared.error.BusinessRuleException;
 import co.sierraalta.production.shared.error.ResourceNotFoundException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -92,6 +94,10 @@ public class HistoryService {
 	@PreAuthorize("hasAuthority('history:write')")
 	public LoadSummary load(Long seriesId, List<NewObservation> batch, Long actorId) {
 		Series target = series.findForUpdateById(seriesId).orElseThrow(() -> notFound(seriesId));
+		if (target.getPeriodicity() == Periodicity.PERIODO) {
+			throw new BusinessRuleException("La serie " + target.getProduct().getName()
+					+ " es un caso de prueba del Excel y no admite cargas.");
+		}
 		List<YearMonth> periods = batch.stream().map(NewObservation::period).toList();
 		List<YearMonth> existing = observations.findPeriodsBySeriesId(seriesId).stream().map(YearMonth::from).toList();
 		MonthlyLoadRules.check(existing, periods, YearMonth.now(COMPANY_ZONE));

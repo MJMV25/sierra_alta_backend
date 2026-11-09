@@ -6,6 +6,7 @@ import java.util.List;
 import co.sierraalta.production.forecast.domain.ExponentialSmoothing;
 import co.sierraalta.production.forecast.domain.ForecastMethod;
 import co.sierraalta.production.forecast.domain.InvalidForecastParameterException;
+import co.sierraalta.production.forecast.domain.LinearRegression;
 import co.sierraalta.production.forecast.domain.MethodCode;
 import co.sierraalta.production.forecast.domain.SimpleMovingAverage;
 import co.sierraalta.production.forecast.domain.TrendAdjustedExponentialSmoothing;
@@ -13,7 +14,8 @@ import co.sierraalta.production.forecast.domain.WeightedMovingAverage;
 
 /**
  * Método pedido con sus parámetros. Solo se usan los que corresponden al método: n para el promedio simple,
- * pesos para el ponderado, α para el suavizamiento y α y β para Holt; los demás se ignoran.
+ * pesos para el ponderado, α para el suavizamiento y α y β para Holt; la regresión lineal no tiene. Los demás
+ * se ignoran.
  */
 public record MethodSpec(MethodCode method, Integer periods, List<BigDecimal> weights, BigDecimal alpha,
 		BigDecimal beta) {
@@ -27,6 +29,7 @@ public record MethodSpec(MethodCode method, Integer periods, List<BigDecimal> we
 			case EXPONENTIAL_SMOOTHING -> new ExponentialSmoothing(required("alpha", alpha).doubleValue());
 			case TREND_ADJUSTED_EXPONENTIAL_SMOOTHING -> new TrendAdjustedExponentialSmoothing(
 					required("alpha", alpha).doubleValue(), required("beta", beta).doubleValue());
+			case LINEAR_REGRESSION -> new LinearRegression();
 		};
 	}
 
