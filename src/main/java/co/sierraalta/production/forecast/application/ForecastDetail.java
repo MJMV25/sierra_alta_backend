@@ -37,10 +37,10 @@ public record ForecastDetail(Long id, Long seriesId, String productCode, String 
 	/**
 	 * Resultado de un método. {@code mad} en unidades y {@code mapePercent} en porcentaje (fracción × 100);
 	 * nulos si no son calculables. {@code pairsUsed} periodos evaluados; {@code mapeExcluded} de ellos con
-	 * real 0, que no entran al MAPE.
+	 * real 0, que no entran al MAPE. {@code seasonLength} es L del estacional multiplicativo.
 	 */
 	public record MethodResult(MethodCode method, Integer periods, List<BigDecimal> weights, BigDecimal alpha,
-			BigDecimal beta, List<Point> forecasts, Point nextForecast, BigDecimal mad, BigDecimal mapePercent,
+			BigDecimal beta, Integer seasonLength, List<Point> forecasts, Point nextForecast, BigDecimal mad, BigDecimal mapePercent,
 			int pairsUsed, int mapeExcluded) {
 	}
 }

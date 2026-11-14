@@ -8,17 +8,18 @@ import co.sierraalta.production.forecast.domain.ForecastMethod;
 import co.sierraalta.production.forecast.domain.InvalidForecastParameterException;
 import co.sierraalta.production.forecast.domain.LinearRegression;
 import co.sierraalta.production.forecast.domain.MethodCode;
+import co.sierraalta.production.forecast.domain.SeasonalMultiplicative;
 import co.sierraalta.production.forecast.domain.SimpleMovingAverage;
 import co.sierraalta.production.forecast.domain.TrendAdjustedExponentialSmoothing;
 import co.sierraalta.production.forecast.domain.WeightedMovingAverage;
 
 /**
  * Método pedido con sus parámetros. Solo se usan los que corresponden al método: n para el promedio simple,
- * pesos para el ponderado, α para el suavizamiento y α y β para Holt; la regresión lineal no tiene. Los demás
- * se ignoran.
+ * pesos para el ponderado, α para el suavizamiento, α y β para Holt y L para el estacional; la regresión
+ * lineal no tiene. Los demás se ignoran.
  */
 public record MethodSpec(MethodCode method, Integer periods, List<BigDecimal> weights, BigDecimal alpha,
-		BigDecimal beta) {
+		BigDecimal beta, Integer seasonLength) {
 
 	/** Construye el algoritmo; los parámetros faltantes o fuera de rango se informan con su campo. */
 	ForecastMethod toAlgorithm() {
@@ -30,7 +31,12 @@ public record MethodSpec(MethodCode method, Integer periods, List<BigDecimal> we
 			case TREND_ADJUSTED_EXPONENTIAL_SMOOTHING -> new TrendAdjustedExponentialSmoothing(
 					required("alpha", alpha).doubleValue(), required("beta", beta).doubleValue());
 			case LINEAR_REGRESSION -> new LinearRegression();
+			case SEASONAL_MULTIPLICATIVE -> new SeasonalMultiplicative(required("seasonLength", seasonLength));
 		};
+	}
+
+	Integer storedSeasonLength() {
+		return method == MethodCode.SEASONAL_MULTIPLICATIVE ? seasonLength : null;
 	}
 
 	/** n guardado: el del promedio simple o la cantidad de pesos del ponderado. */

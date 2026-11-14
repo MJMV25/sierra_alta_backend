@@ -200,7 +200,7 @@ public class ForecastService {
 				new MetricValue(MetricCode.MAPE, stored(indicators.mape()),
 						indicators.pairsUsed() - indicators.mapeExcluded(), indicators.mapeExcluded()));
 		return new MethodRun(spec.method(), spec.storedPeriods(), spec.storedWeights(), spec.storedAlpha(),
-				spec.storedBeta(), results, metrics);
+				spec.storedBeta(), spec.storedSeasonLength(), results, metrics);
 	}
 
 	private ForecastDetail detail(ForecastExecution execution) {
@@ -233,7 +233,7 @@ public class ForecastService {
 		MetricValue mape = run.metric(MetricCode.MAPE).orElseThrow();
 		return new ForecastDetail.MethodResult(run.getMethod(), run.getPeriods(),
 				run.getWeights().stream().map(Decimals::plain).toList(), Decimals.plain(run.getAlpha()),
-				Decimals.plain(run.getBeta()), fitted, next, Decimals.plain(mad.getValue()),
+				Decimals.plain(run.getBeta()), run.getSeasonLength(), fitted, next, Decimals.plain(mad.getValue()),
 				mape.getValue() == null ? null : Decimals.plain(mape.getValue().multiply(HUNDRED)),
 				mad.getPairsUsed(), mape.getPairsExcluded());
 	}

@@ -211,6 +211,61 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$[0].periodicity").value("PERIODO"));
 	}
 
+	/** Hojas "ESTACIONAL MULTIPLI." del Excel de la entrega 2: solo, se evalúa en todos los periodos (ADR 12). */
+	@Test
+	void seasonalAloneMatchesTheSeasonalSheets() throws Exception {
+		execute(excelCase("CASO-1-SPOKANE"), """
+				[{"method": "SEASONAL_MULTIPLICATIVE", "seasonLength": 5}]""")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.evaluationStart").value("2000-01"))
+				.andExpect(jsonPath("$.methods[0].seasonLength").value(5))
+				.andExpect(jsonPath("$.methods[0].periods").value(nullValue()))
+				.andExpect(jsonPath("$.methods[0].forecasts[0].forecast").value(282))
+				.andExpect(jsonPath("$.methods[0].pairsUsed").value(30))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(13.033333333333333, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mapePercent", closeTo(4.684010977151084, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[0].nextForecast.forecast").value(267));
+
+		// La hoja de ACME usa 24 trimestres (2000-2005): t = 1..24 se guardan de 2000-01 a 2001-12.
+		postForecast("""
+				{"seriesId": %d, "to": "2001-12",
+				 "methods": [{"method": "SEASONAL_MULTIPLICATIVE", "seasonLength": 4}]}"""
+					.formatted(excelCase("CASO-2-ACME")), null)
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.methods[0].pairsUsed").value(24))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(31.416666666666668, EXCEL)))
+				.andExpect(jsonPath("$.methods[0].mapePercent", closeTo(8.877871434121432, EXCEL_PERCENT)))
+				.andExpect(jsonPath("$.methods[0].nextForecast.forecast").value(794));
+	}
+
+	@Test
+	void allSixMethodsShareTheCommonWindow() throws Exception {
+		String allSix = SPOKANE_METHODS.replace("\"beta\": 0.99}]", "\"beta\": 0.99}, {\"method\": \"LINEAR_REGRESSION\"},"
+				+ " {\"method\": \"SEASONAL_MULTIPLICATIVE\", \"seasonLength\": 5}]");
+		execute(excelCase("CASO-1-SPOKANE"), allSix)
+				.andExpect(status().isCreated())
+				// El estacional no recorta la ventana: todos se siguen evaluando desde t = 6.
+				.andExpect(jsonPath("$.evaluationStart").value("2000-06"))
+				.andExpect(jsonPath("$.methods.length()").value(6))
+				.andExpect(jsonPath("$.methods[5].pairsUsed").value(25))
+				.andExpect(jsonPath("$.methods[5].forecasts.length()").value(30))
+				.andExpect(jsonPath("$.methods[0].mad", closeTo(20.583999999999996, EXCEL)));
+	}
+
+	@Test
+	void seasonalParametersAreReportedOnTheirField() throws Exception {
+		long seriesId = seriesWith(List.of(1.0, 2.0, 3.0, 4.0, 5.0));
+		expectFieldError(seriesId, """
+				[{"method": "SEASONAL_MULTIPLICATIVE"}]""", "methods[0].seasonLength");
+		expectFieldError(seriesId, """
+				[{"method": "SEASONAL_MULTIPLICATIVE", "seasonLength": 1}]""", "methods[0].seasonLength");
+		// 5 datos con L = 3: un solo ciclo completo.
+		expectFieldError(seriesId, """
+				[{"method": "SEASONAL_MULTIPLICATIVE", "seasonLength": 3}]""", "methods[0].seasonLength");
+		expectFieldError(seriesId, """
+				[{"method": "SEASONAL_MULTIPLICATIVE", "seasonLength": 121}]""", "methods[0].seasonLength");
+	}
+
 	@Test
 	void comparisonMarksTiesAndMethodsWithoutMape() throws Exception {
 		// SMA(1) y ponderado con un solo peso pronostican igual: empatan y ambos son los mejores (MAD 10,
@@ -376,7 +431,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 	@WithMockUser(authorities = { "forecast:read", "history:read" })
 	void executeRequiresItsPermissionAlsoInTheUseCase() {
 		ForecastCommand command = new ForecastCommand(1L,
-				List.of(new MethodSpec(MethodCode.EXPONENTIAL_SMOOTHING, null, null, BigDecimal.ONE, null)));
+				List.of(new MethodSpec(MethodCode.EXPONENTIAL_SMOOTHING, null, null, BigDecimal.ONE, null, null)));
 		assertThatThrownBy(() -> forecasts.execute(command, 1L, null)).isInstanceOf(AccessDeniedException.class);
 	}
 

@@ -25,4 +25,4 @@ intercepto 284,84 (Spokane) y 251,5 (ACME); MAD 15,90 y 118,40; MAPE 5,79 % y 35
 - (+) `LinearRegressionTest` fija la pendiente y el intercepto corregido con la tolerancia del ADR 07.
 - (−) La regresión ya no coincide con la hoja del Excel (2) mientras Industrial no la corrija; la
   referencia de verificación es su documento, no esa hoja.
-- El método estacional multiplicativo de la misma hoja sigue fuera del alcance hasta que Industrial lo pida.
+- El método estacional multiplicativo se agregó después, idéntico al Excel de la entrega 2 ([ADR 12](0012-estacional-multiplicativo.md)).

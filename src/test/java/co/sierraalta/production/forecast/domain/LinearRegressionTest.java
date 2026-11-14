@@ -17,8 +17,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Regresión lineal con la corrección de Industrial (documento "Error en el proyecto", 2026-11-06): la
  * pendiente es la celda PENDIENTE del Excel y el intercepto el corregido (284,84 y 251,5). MAD y MAPE se
- * evalúan en la ventana común con los otros 4 métodos (Spokane desde t = 6, ACME desde t = 5), y dan los
- * valores "después" del documento: 15,90 · 5,79 % y 118,40 · 35,94 %.
+ * evalúan en la ventana común con los otros 4 métodos (Spokane desde t = 6, ACME desde t = 5); el Excel de la
+ * entrega 2 ya trae la corrección y sus valores exactos (15,897 · 5,79 % y 118,399 · 35,94 %) se exigen con 6
+ * decimales.
  */
 class LinearRegressionTest {
 
@@ -43,8 +44,8 @@ class LinearRegressionTest {
 		assertThat(Math.abs(actuals.get(0) - forecast.at(0))).isCloseTo(9.66, within(DOCUMENT));
 
 		ErrorIndicators indicators = ErrorIndicators.of(forecast.pairs(actuals, 5));
-		assertThat(indicators.mad().orElseThrow()).isCloseTo(15.90, within(DOCUMENT));
-		assertThat(indicators.mape().orElseThrow() * 100).isCloseTo(5.79, within(DOCUMENT));
+		assertThat(indicators.mad().orElseThrow()).isCloseTo(15.896978865406004, within(TOLERANCE));
+		assertThat(indicators.mape().orElseThrow()).isCloseTo(0.057934757119589786, within(TOLERANCE));
 	}
 
 	@Test
@@ -56,8 +57,8 @@ class LinearRegressionTest {
 		assertThat(forecast.next()).isCloseTo(600.5, within(TOLERANCE));
 
 		ErrorIndicators indicators = ErrorIndicators.of(forecast.pairs(actuals, 4));
-		assertThat(indicators.mad().orElseThrow()).isCloseTo(118.40, within(DOCUMENT));
-		assertThat(indicators.mape().orElseThrow() * 100).isCloseTo(35.94, within(DOCUMENT));
+		assertThat(indicators.mad().orElseThrow()).isCloseTo(118.39926739926739, within(TOLERANCE));
+		assertThat(indicators.mape().orElseThrow()).isCloseTo(0.3593982973979742, within(TOLERANCE));
 	}
 
 	@Test

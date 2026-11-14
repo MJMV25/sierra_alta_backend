@@ -26,6 +26,7 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
 | α y β (10) | Solo estrictamente entre 0 y 1. |
 | Pesos del ponderado | Cada uno en (0, 1] y suma igual a 1 (margen 10⁻⁹ por la representación binaria). El primer peso (K0) se aplica al dato más reciente, como en las fórmulas del Excel. |
 | n del promedio móvil (13) | Entero ≥ 1 y ≤ datos disponibles. Si n es igual al total de datos se calcula solo el pronóstico siguiente y MAD y MAPE quedan "no calculables" (confirmado el 2026-11-05). |
+| L del estacional multiplicativo | Entero ≥ 2 y ≤ 120, con al menos 2 ciclos completos en el periodo elegido. Pronósticos redondeados a entero, como el Excel ([ADR 12](0012-estacional-multiplicativo.md)). |
 | Horizonte (12) | Todos los métodos pronostican solo el periodo siguiente (confirmado el 2026-11-05). |
 | MSE (9) | Fuera del proyecto: no se calcula ni se muestra. |
 

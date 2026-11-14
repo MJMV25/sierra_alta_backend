@@ -8,5 +8,7 @@ public enum MethodCode {
 	/** Holt. */
 	TREND_ADJUSTED_EXPONENTIAL_SMOOTHING,
 	/** Regresión lineal sobre t (sin parámetros). */
-	LINEAR_REGRESSION
+	LINEAR_REGRESSION,
+	/** Estacional multiplicativo (parámetro L, longitud del ciclo). */
+	SEASONAL_MULTIPLICATIVE
 }

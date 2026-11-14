@@ -75,3 +75,4 @@ Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunc
 - [ADR 09 — Verificación con los datos del Excel](adr/0009-verificacion-con-datos-del-excel.md)
 - [ADR 10 — Ejecución de pronósticos idempotente](adr/0010-idempotencia-de-pronosticos.md)
 - [ADR 11 — Rendimiento medido y respaldo con restauración de prueba](adr/0011-rendimiento-y-recuperacion.md)
+- [ADR 12 — Estacional multiplicativo idéntico al Excel](adr/0012-estacional-multiplicativo.md)
