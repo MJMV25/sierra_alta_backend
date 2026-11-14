@@ -50,6 +50,10 @@ public class MethodRun {
 	@Column(name = "beta", precision = 11, scale = 10)
 	private BigDecimal beta;
 
+	/** L del estacional multiplicativo: periodos por ciclo. */
+	@Column(name = "longitud_ciclo")
+	private Integer seasonLength;
+
 	/** Posición 0 (K0) = peso del dato más reciente. */
 	@ElementCollection
 	@CollectionTable(name = "peso", joinColumns = @JoinColumn(name = "metodo_ejecutado_id"))
@@ -71,12 +75,13 @@ public class MethodRun {
 	}
 
 	public MethodRun(MethodCode method, Integer periods, List<BigDecimal> weights, BigDecimal alpha, BigDecimal beta,
-			List<ResultPoint> results, List<MetricValue> metrics) {
+			Integer seasonLength, List<ResultPoint> results, List<MetricValue> metrics) {
 		this.method = method;
 		this.periods = periods;
 		this.weights = new ArrayList<>(weights);
 		this.alpha = alpha;
 		this.beta = beta;
+		this.seasonLength = seasonLength;
 		this.results = new ArrayList<>(results);
 		this.metrics = new ArrayList<>(metrics);
 	}
@@ -107,6 +112,10 @@ public class MethodRun {
 
 	public BigDecimal getBeta() {
 		return beta;
+	}
+
+	public Integer getSeasonLength() {
+		return seasonLength;
 	}
 
 	public List<ResultPoint> getResults() {

@@ -36,10 +36,18 @@ build/
 .env
 *.local.yml
 
-### Documentos de Office (se entregan fuera del repositorio) ###
+### Documentos de Office y PDF (se entregan fuera del repositorio) ###
+*.doc
 *.docx
+*.xls
 *.xlsx
+*.xlsm
+*.pdf
 ~$*
+
+### Archivos del sistema ###
+desktop.ini
+Thumbs.db
 
 ### Datos reales de la empresa (se cargan por la API, ver docs/datos/README.md) ###
 datos-locales/

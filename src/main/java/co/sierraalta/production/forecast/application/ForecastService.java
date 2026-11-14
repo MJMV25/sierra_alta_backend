@@ -27,6 +27,7 @@ import co.sierraalta.production.history.application.HistoryService;
 import co.sierraalta.production.history.application.ObservationValue;
 import co.sierraalta.production.history.application.SeriesObservations;
 import co.sierraalta.production.history.application.SeriesReference;
+import co.sierraalta.production.history.domain.Periodicity;
 import co.sierraalta.production.indicators.application.IndicatorsProperties;
 import co.sierraalta.production.indicators.domain.ErrorIndicators;
 import co.sierraalta.production.shared.Decimals;
@@ -127,6 +128,7 @@ public class ForecastService {
 				found.stream().map(ForecastExecution::getSeriesId).distinct().toList());
 		return found.stream()
 				.map(e -> new ForecastSummary(e.getId(), e.getSeriesId(), productName(references.get(e.getSeriesId())),
+						periodicity(references.get(e.getSeriesId())),
 						e.getExecutedAt(), e.getUserId(), e.getDataVersion(), e.getEvaluationStart(),
 						e.getMethods().stream().map(MethodRun::getMethod).toList()))
 				.toList();
@@ -198,7 +200,7 @@ public class ForecastService {
 				new MetricValue(MetricCode.MAPE, stored(indicators.mape()),
 						indicators.pairsUsed() - indicators.mapeExcluded(), indicators.mapeExcluded()));
 		return new MethodRun(spec.method(), spec.storedPeriods(), spec.storedWeights(), spec.storedAlpha(),
-				spec.storedBeta(), results, metrics);
+				spec.storedBeta(), spec.storedSeasonLength(), results, metrics);
 	}
 
 	private ForecastDetail detail(ForecastExecution execution) {
@@ -210,7 +212,7 @@ public class ForecastService {
 		String executedByUsername = users.usernames(List.of(execution.getUserId())).get(execution.getUserId());
 		return new ForecastDetail(execution.getId(), execution.getSeriesId(),
 				series == null ? null : series.productCode(), productName(series),
-				series == null ? null : series.measure(), series == null ? null : series.unit(),
+				series == null ? null : series.measure(), periodicity(series), series == null ? null : series.unit(),
 				execution.getDataVersion(), execution.getExecutedAt(), execution.getUserId(), executedByUsername,
 				actuals.isEmpty() ? null : actuals.getFirst().period(),
 				actuals.isEmpty() ? null : actuals.getLast().period(),
@@ -231,7 +233,7 @@ public class ForecastService {
 		MetricValue mape = run.metric(MetricCode.MAPE).orElseThrow();
 		return new ForecastDetail.MethodResult(run.getMethod(), run.getPeriods(),
 				run.getWeights().stream().map(Decimals::plain).toList(), Decimals.plain(run.getAlpha()),
-				Decimals.plain(run.getBeta()), fitted, next, Decimals.plain(mad.getValue()),
+				Decimals.plain(run.getBeta()), run.getSeasonLength(), fitted, next, Decimals.plain(mad.getValue()),
 				mape.getValue() == null ? null : Decimals.plain(mape.getValue().multiply(HUNDRED)),
 				mad.getPairsUsed(), mape.getPairsExcluded());
 	}
@@ -243,6 +245,10 @@ public class ForecastService {
 
 	private static String productName(SeriesReference series) {
 		return series == null ? null : series.productName();
+	}
+
+	private static Periodicity periodicity(SeriesReference series) {
+		return series == null ? null : series.periodicity();
 	}
 
 	private static BigDecimal stored(double value) {
