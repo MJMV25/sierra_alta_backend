@@ -10,9 +10,9 @@ public enum Permission {
 	USERS_MANAGE("users:manage"),
 	/** Consultar productos, series y observaciones. */
 	HISTORY_READ("history:read"),
-	/** Cargar y validar históricos. */
+	/** Editar la hoja de datos: agregar, corregir y borrar meses (ADR 13). */
 	HISTORY_WRITE("history:write"),
-	/** Ejecutar un pronóstico sobre una serie. */
+	/** Guardar un pronóstico (ejecución con trazabilidad). Recalcular sin guardar solo exige {@link #FORECAST_READ}. */
 	FORECAST_EXECUTE("forecast:execute"),
 	/** Consultar ejecuciones y resultados de pronóstico. */
 	FORECAST_READ("forecast:read"),

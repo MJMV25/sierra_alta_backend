@@ -30,8 +30,13 @@ public record ForecastDetail(Long id, Long seriesId, String productCode, String 
 	public record Actual(YearMonth period, BigDecimal value) {
 	}
 
-	/** {@code actual} es nulo en el pronóstico del periodo siguiente. */
-	public record Point(YearMonth period, BigDecimal forecast, BigDecimal actual) {
+	/**
+	 * {@code actual}, {@code error} y {@code absolutePercentError} son nulos en el pronóstico del periodo
+	 * siguiente. {@code error} = real − pronóstico; {@code absolutePercentError} = |error| / real × 100, nulo si
+	 * el real es 0.
+	 */
+	public record Point(YearMonth period, BigDecimal forecast, BigDecimal actual, BigDecimal error,
+			BigDecimal absolutePercentError) {
 	}
 
 	/**

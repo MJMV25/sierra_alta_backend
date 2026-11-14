@@ -8,12 +8,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Tabla comparativa de los métodos de una ejecución (ADR 07).
+ * Tabla comparativa de los métodos de una ejecución (ADR 07 y 13).
  *
- * <p>Ni el MAD ni el MAPE mandan (pregunta 22): se señala el mejor por cada indicador, sin un ganador único.
- * Dos métodos empatan si su indicador coincide a 6 decimales, la tolerancia acordada con el Excel; en ese
- * caso ambos quedan marcados como mejores. Cada método cumple si su MAPE es menor que el umbral; igual o
- * mayor no cumple (pregunta 21).
+ * <p>Se señala el mejor por MAD y el mejor por MAPE (pueden ser métodos distintos). Dos métodos empatan si su
+ * indicador coincide a 6 decimales, la tolerancia acordada con el Excel; en ese caso ambos quedan marcados.
+ * Un método no comparable (el estacional multiplicativo, que se ajusta dentro de la muestra) aparece en la
+ * tabla pero no compite por ser el mejor. Sin estado de aceptación: no hay umbral (ADR 13).
  */
 public final class MethodComparison {
 
@@ -24,26 +24,17 @@ public final class MethodComparison {
 	}
 
 	/**
-	 * @param mapeThreshold umbral como fracción (0,10 = 10 %); nulo si la ejecución no tiene criterio
-	 * @param methods       indicadores de cada método, en el orden en que se ejecutaron
+	 * @param methods indicadores de cada método, en el orden en que se ejecutaron
 	 * @return una fila por método, en el mismo orden
 	 */
-	public static List<Row> of(BigDecimal mapeThreshold, List<MethodIndicators> methods) {
-		Optional<BigDecimal> bestMad = best(methods.stream().map(MethodIndicators::mad).toList());
-		Optional<BigDecimal> bestMape = best(methods.stream().map(MethodIndicators::mape).toList());
+	public static List<Row> of(List<MethodIndicators> methods) {
+		List<MethodIndicators> competing = methods.stream().filter(MethodIndicators::comparable).toList();
+		Optional<BigDecimal> bestMad = best(competing.stream().map(MethodIndicators::mad).toList());
+		Optional<BigDecimal> bestMape = best(competing.stream().map(MethodIndicators::mape).toList());
 		return methods.stream()
-				.map(m -> new Row(m, ties(m.mad(), bestMad), ties(m.mape(), bestMape), status(m.mape(), mapeThreshold)))
+				.map(m -> new Row(m, m.comparable() && ties(m.mad(), bestMad),
+						m.comparable() && ties(m.mape(), bestMape)))
 				.toList();
-	}
-
-	static AcceptanceStatus status(BigDecimal mape, BigDecimal mapeThreshold) {
-		if (mapeThreshold == null) {
-			return AcceptanceStatus.SIN_CRITERIO;
-		}
-		if (mape == null) {
-			return AcceptanceStatus.SIN_EVALUAR;
-		}
-		return mape.compareTo(mapeThreshold) < 0 ? AcceptanceStatus.CUMPLE : AcceptanceStatus.NO_CUMPLE;
 	}
 
 	private static Optional<BigDecimal> best(List<BigDecimal> values) {
@@ -59,13 +50,14 @@ public final class MethodComparison {
 	}
 
 	/**
-	 * Indicadores guardados de un método. {@code mad} en unidades y {@code mape} como fracción; nulos si no
-	 * son calculables.
+	 * Indicadores de un método. {@code mad} en unidades y {@code mape} como fracción; nulos si no son
+	 * calculables. {@code comparable} es falso si el método no compite por ser el mejor.
 	 */
-	public record MethodIndicators(String method, BigDecimal mad, BigDecimal mape, int pairsUsed, int mapeExcluded) {
+	public record MethodIndicators(String method, BigDecimal mad, BigDecimal mape, int pairsUsed, int mapeExcluded,
+			boolean comparable) {
 	}
 
-	/** Fila de la tabla: los indicadores del método, si es el mejor por cada uno y su estado frente al umbral. */
-	public record Row(MethodIndicators indicators, boolean bestByMad, boolean bestByMape, AcceptanceStatus status) {
+	/** Fila de la tabla: los indicadores del método y si es el mejor por cada uno. */
+	public record Row(MethodIndicators indicators, boolean bestByMad, boolean bestByMape) {
 	}
 }

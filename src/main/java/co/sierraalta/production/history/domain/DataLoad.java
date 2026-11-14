@@ -15,8 +15,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 /**
- * Lote de observaciones cargado de una vez por un usuario. Queda como registro de auditoría de la carga
- * y su id es la versión de datos de la serie. No se modifica después de creado.
+ * Cambios a una serie guardados de una vez por un usuario (meses agregados, corregidos o borrados). Queda
+ * como registro de auditoría y su id es la versión de datos de la serie: la última carga de la serie. El
+ * detalle de cada mes está en {@link ObservationChangeLog}. No se modifica después de creado.
  */
 @Entity
 @Table(name = "carga")

@@ -34,23 +34,23 @@ class RoleCodeTest {
 	}
 
 	@Test
-	void analystLoadsHistoryButDoesNotExecuteForecasts() {
+	void analystSavesForecastsButDoesNotEditTheSheet() {
 		assertThat(RoleCode.ANALYST.permissions())
-				.containsExactlyInAnyOrder(HISTORY_READ, HISTORY_WRITE, FORECAST_READ, INDICATORS_READ);
+				.containsExactlyInAnyOrder(HISTORY_READ, FORECAST_READ, FORECAST_EXECUTE, INDICATORS_READ);
 	}
 
 	@Test
-	void onlyAnalystAndAdminWriteHistory() {
+	void onlyAdminEditsTheSheet() {
 		for (RoleCode role : RoleCode.values()) {
-			assertThat(role.grants(HISTORY_WRITE)).as(role.name())
-					.isEqualTo(role == RoleCode.ANALYST || role == RoleCode.ADMIN);
+			assertThat(role.grants(HISTORY_WRITE)).as(role.name()).isEqualTo(role == RoleCode.ADMIN);
 		}
 	}
 
 	@Test
-	void onlyAdminExecutesForecasts() {
+	void onlyAnalystAndAdminSaveForecasts() {
 		for (RoleCode role : RoleCode.values()) {
-			assertThat(role.grants(FORECAST_EXECUTE)).as(role.name()).isEqualTo(role == RoleCode.ADMIN);
+			assertThat(role.grants(FORECAST_EXECUTE)).as(role.name())
+					.isEqualTo(role == RoleCode.ANALYST || role == RoleCode.ADMIN);
 		}
 	}
 

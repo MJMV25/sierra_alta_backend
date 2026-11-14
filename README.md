@@ -7,10 +7,10 @@ API REST del sistema web de pronóstico de producción (Sierra Alta S.A.S. BIC, 
 Monolito modular multicapa en **Java 21 + Spring Boot 4.1 + Spring Security 7 + PostgreSQL**.
 El frontend React + Vite vive en un repositorio/carpeta aparte y consume esta API.
 
-> Estado actual: **inicio de sesión, alcance por rol, históricos (fase 1), ejecución de pronósticos
-> (fase 2) y comparación de métodos con umbral (fase 3) funcionales.** Los cuatro métodos con MAD y MAPE
-> reproducen el Excel corregido también a través de la API. `GET /indicators/executions/{id}` entrega la
-> tabla comparativa: mejor método por MAD y por MAPE y estado frente al umbral del MAPE (10 %).
+> Estado actual: **inicio de sesión, alcance por rol, hoja de datos editable con historial de cambios,
+> recálculo en vivo sin guardar y pronósticos guardados con 6 métodos, funcionales.** Los métodos reproducen
+> el Excel también a través de la API. La comparación marca el mejor método por MAD y por MAPE, sin estado de
+> aceptación (ADR 13).
 
 ## Estructura
 
@@ -25,15 +25,16 @@ src/main/java/co/sierraalta/production
 │       ├── security/             SecurityConfig (matriz de autorización), sesión, CSRF, filtros
 │       ├── persistence/          Repositorios Spring Data
 │       └── bootstrap/            Creación del primer administrador y cuentas demo
-├── history/                      Productos, series, observaciones y cargas  ← funcional
-├── forecast/                     Ejecuciones de 1 a 4 métodos (Facade + Strategy)  ← funcional
-├── indicators/                   MAD, MAPE y tabla comparativa con umbral  ← funcional
+├── history/                      Productos, series, hoja de datos e historial de cambios  ← funcional
+├── forecast/                     Vista previa y ejecuciones de 1 a 6 métodos (Facade + Strategy)  ← funcional
+├── indicators/                   MAD, MAPE, error por periodo y tabla comparativa  ← funcional
 └── shared/                       Errores RFC 9457 (problem+json), CORS y prefijo /api/v1
 src/main/resources
 ├── application.yml / application-dev.yml
 └── db/migration/                 V1 identidad y auditoría · V2 históricos y pronósticos ·
                                   V3 cargas y catálogo de referencias · V4 ejecuciones por método ·
-                                  V5 umbral de aceptación · V6 roles sin supervisor (Flyway)
+                                  V5 umbral de aceptación · V6 roles sin supervisor · V7 datos de prueba del
+                                  Excel · V8 regresión lineal · V9 estacional · V10 hoja de datos sin umbral
 src/test/resources/forecast/golden/  Casos Spokane y ACME copiados del Excel corregido
 docker/postgres/initdb/           Cuentas de base de datos con privilegio mínimo
 docs/architecture/                Arquitectura, API, matriz de roles y ADR
@@ -138,6 +139,12 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 - Reglas de desarrollo del proyecto: [PROJECT_RULES.md](PROJECT_RULES.md).
 
 ## Verificación realizada
+
+- `mvnw test` (14-11-2026, hoja de datos en vivo, ADR 13): 180 pruebas. Agrega la hoja editable (agregar,
+  corregir y borrar el último mes; historial de cambios; conflicto por versión de datos; datos de ejemplo de
+  solo lectura; todo o nada entre series), la vista previa sin guardar (mismos MAD y MAPE del Excel, con datos
+  sin guardar y sin crear ejecuciones), el estacional fuera de la elección del mejor y el error por periodo.
+  Revisión visual con H2: los 57 meses de las 4 referencias cargados con `docs/datos/cargar-historicos.sh`.
 
 - `mvnw verify` (05-11-2026, roles): 134 pruebas. Matriz 3 roles × 10 endpoints con el nuevo alcance
   (solo el administrador ejecuta pronósticos; el planeador ya no ejecuta ni carga).

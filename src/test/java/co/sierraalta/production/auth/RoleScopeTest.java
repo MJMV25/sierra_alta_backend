@@ -35,7 +35,7 @@ class RoleScopeTest extends ApiIntegrationTest {
 
 	private static final Set<String> ADMIN_ONLY = Set.of("ADMIN");
 	private static final Set<String> READERS = Set.of("ADMIN", "PLANNER", "ANALYST");
-	private static final Set<String> LOADERS = Set.of("ADMIN", "ANALYST");
+	private static final Set<String> SAVERS = Set.of("ADMIN", "ANALYST");
 
 	private static final Map<String, String> USER_BY_ROLE = Map.of(
 			"ADMIN", ADMIN,
@@ -56,8 +56,10 @@ class RoleScopeTest extends ApiIntegrationTest {
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/security-events", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/history/series/{serie}/observations", READERS, 200),
-			new Endpoint(HttpMethod.POST, "/api/v1/history/series/{serie}/observations", LOADERS, 400),
-			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", ADMIN_ONLY, 400),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/series/{serie}/changes", READERS, 200),
+			new Endpoint(HttpMethod.PATCH, "/api/v1/history/observations", ADMIN_ONLY, 400),
+			new Endpoint(HttpMethod.POST, "/api/v1/forecasts/preview", READERS, 400),
+			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", SAVERS, 400),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/999999", READERS, 404),
 			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/999999", READERS, 404));

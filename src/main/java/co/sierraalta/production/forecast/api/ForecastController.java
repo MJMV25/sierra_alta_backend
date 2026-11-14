@@ -7,9 +7,12 @@ import java.util.List;
 import co.sierraalta.production.auth.infrastructure.security.AccountPrincipal;
 import co.sierraalta.production.forecast.api.dto.CreateForecastRequest;
 import co.sierraalta.production.forecast.api.dto.MethodRequest;
+import co.sierraalta.production.forecast.api.dto.PreviewForecastRequest;
 import co.sierraalta.production.forecast.application.ExecutionOutcome;
 import co.sierraalta.production.forecast.application.ForecastCommand;
 import co.sierraalta.production.forecast.application.ForecastDetail;
+import co.sierraalta.production.forecast.application.ForecastPreview;
+import co.sierraalta.production.forecast.application.PreviewCommand;
 import co.sierraalta.production.forecast.application.ForecastService;
 import co.sierraalta.production.forecast.application.ForecastSummary;
 import co.sierraalta.production.shared.web.ApiPaths;
@@ -27,8 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Contrato REST del módulo de pronósticos. Permisos (ver {@code SecurityConfig}):
- * ejecutar {@code forecast:execute} (solo administrador); consultar {@code forecast:read}
- * (administrador, planeador, analista).
+ * guardar {@code forecast:execute} (administrador y analista); recalcular sin guardar y consultar
+ * {@code forecast:read} (todos los roles).
  */
 @RestController
 @RequestMapping(ApiPaths.V1 + "/forecasts")
@@ -53,6 +56,17 @@ public class ForecastController {
 		}
 		return ResponseEntity.created(URI.create(ApiPaths.V1 + "/forecasts/" + outcome.detail().id()))
 				.body(outcome.detail());
+	}
+
+	/** Calcula sin guardar: lo que la hoja muestra en vivo al cambiar parámetros o datos. */
+	@PostMapping("/preview")
+	public ForecastPreview preview(@Valid @RequestBody PreviewForecastRequest body) {
+		ForecastCommand forecast = new ForecastCommand(body.seriesId(), month(body.from()), month(body.to()),
+				body.methods().stream().map(MethodRequest::toSpec).toList());
+		List<PreviewCommand.Actual> actuals = body.actuals() == null ? null : body.actuals().stream()
+				.map(a -> new PreviewCommand.Actual(YearMonth.parse(a.period()), a.value()))
+				.toList();
+		return forecasts.preview(new PreviewCommand(forecast, actuals));
 	}
 
 	@GetMapping

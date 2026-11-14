@@ -42,6 +42,8 @@ Industrial – Módulo de pronósticos*, 28-10-2026), que respondió el 29-10-20
 - **Mejor modelo** (22): ni el MAD ni el MAPE mandan. El sistema muestra ambos indicadores para cada
   método y señala el mejor por cada uno, sin elegir un ganador único.
 - **Umbral** (21): MAPE < 10 % cumple, ≥ 10 % no cumple; configurable (ver "Preguntas cerradas").
+  **Reemplazado por el [ADR 13](0013-hoja-de-datos-en-vivo.md) (2026-11-14):** Industrial pidió quitar el
+  estado; ya no hay umbral y solo se marcan el mejor MAD y el mejor MAPE.
 
 ## Datos de Sierra Alta
 

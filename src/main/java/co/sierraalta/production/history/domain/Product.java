@@ -7,7 +7,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** Referencia de producto (por ejemplo, Jersey Pro). El catálogo se crea por migración. */
+/**
+ * Referencia de producto (por ejemplo, Jersey Pro). El catálogo se crea por migración. Las de ejemplo
+ * (Spokane y ACME, casos del Excel) se muestran aparte y son de solo lectura (ADR 13).
+ */
 @Entity
 @Table(name = "producto")
 public class Product {
@@ -24,6 +27,9 @@ public class Product {
 
 	@Column(name = "activo", nullable = false)
 	private boolean active;
+
+	@Column(name = "ejemplo", nullable = false)
+	private boolean sample;
 
 	protected Product() {
 		// Requerido por JPA.
@@ -49,5 +55,9 @@ public class Product {
 
 	public boolean isActive() {
 		return active;
+	}
+
+	public boolean isSample() {
+		return sample;
 	}
 }
