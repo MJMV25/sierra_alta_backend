@@ -12,8 +12,9 @@ for path in sorted((root / 'target/surefire-reports').glob('TEST-*.xml')):
     suites.append({'name': suite.get('name'), **{key: int(suite.get(key, 0)) for key in
                    ('tests', 'failures', 'errors', 'skipped')}})
 modules = {}
-with (root / 'target/site/jacoco/jacoco.csv').open(encoding='utf-8') as f:
-    for row in csv.DictReader(f):
+coverage_path = root / 'target/site/jacoco/jacoco.csv'
+if coverage_path.exists():
+    for row in csv.DictReader(coverage_path.read_text(encoding='utf-8').splitlines()):
         package = row['PACKAGE']
         module = next((name for name in ('auth', 'forecast', 'history', 'indicators')
                        if '.' + name in package), 'transversal')
