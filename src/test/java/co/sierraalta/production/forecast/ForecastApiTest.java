@@ -1,6 +1,8 @@
 package co.sierraalta.production.forecast;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
@@ -36,6 +38,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.ResultMatcher;
+import com.jayway.jsonpath.JsonPath;
 
 /**
  * Pronóstico por la API real: la serie se carga con el endpoint de históricos y el resultado debe coincidir
@@ -71,13 +75,13 @@ class ForecastApiTest extends ApiIntegrationTest {
 				[{"method":"SIMPLE_MOVING_AVERAGE","periods":1}]
 				""")
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(1e26, 1e12), Double.class))
-				.andExpect(jsonPath("$.methods[0].mapePercent").value(closeTo(1e19, 1e5), Double.class))
+				.andExpect(numericValue("$.methods[0].mse", 1e26, 1e12))
+				.andExpect(numericValue("$.methods[0].mapePercent", 1e19, 1e5))
 				.andReturn().getResponse().getContentAsString();
 		mvc.perform(get("/api/v1/forecasts/{id}", idOf(created)).session(planner()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(1e26, 1e12), Double.class))
-				.andExpect(jsonPath("$.methods[0].mapePercent").value(closeTo(1e19, 1e5), Double.class));
+				.andExpect(numericValue("$.methods[0].mse", 1e26, 1e12))
+				.andExpect(numericValue("$.methods[0].mapePercent", 1e19, 1e5));
 	}
 
 	@Test
@@ -379,6 +383,13 @@ class ForecastApiTest extends ApiIntegrationTest {
 	}
 
 	/** Serie nueva con estos valores desde enero de 2020, cargada por el analista con la API de históricos. */
+	private static ResultMatcher numericValue(String path, double expected, double tolerance) {
+		return result -> {
+			Number value = JsonPath.read(result.getResponse().getContentAsString(), path);
+			assertThat(value.doubleValue()).as(path).isCloseTo(expected, within(tolerance));
+		};
+	}
+
 	private long seriesWith(List<Double> values) throws Exception {
 		long seriesId = newSeries();
 		String observations = IntStream.range(0, values.size())
