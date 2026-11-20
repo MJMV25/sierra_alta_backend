@@ -18,7 +18,7 @@ public class MetricValue {
 	@Column(name = "codigo", nullable = false, length = 20)
 	private MetricCode code;
 
-	@Column(name = "valor", precision = 24, scale = 10)
+	@Column(name = "valor", precision = 38, scale = 10)
 	private BigDecimal value;
 
 	@Column(name = "pares_usados", nullable = false)

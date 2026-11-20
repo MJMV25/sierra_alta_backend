@@ -38,14 +38,14 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * Pronóstico por la API real: la serie se carga con el endpoint de históricos y el resultado debe coincidir
+ * PronÃ³stico por la API real: la serie se carga con el endpoint de histÃ³ricos y el resultado debe coincidir
  * con el Excel corregido a 6 decimales (respuesta 6). Cada prueba usa su propia serie.
  */
 class ForecastApiTest extends ApiIntegrationTest {
 
 	private static final double EXCEL = 1e-6;
 
-	/** MAPE en porcentaje: la tolerancia de 6 decimales de la fracción, × 100. */
+	/** MAPE en porcentaje: la tolerancia de 6 decimales de la fracciÃ³n, Ã— 100. */
 	private static final double EXCEL_PERCENT = 1e-4;
 
 	private static final YearMonth FIRST_MONTH = YearMonth.of(2020, 1);
@@ -59,10 +59,40 @@ class ForecastApiTest extends ApiIntegrationTest {
 	@Autowired
 	ForecastService forecasts;
 
-	/** Sesiones abiertas al primer uso: un login previo borraría el contexto de {@code @WithMockUser}. */
+	/** Sesiones abiertas al primer uso: un login previo borrarÃ­a el contexto de {@code @WithMockUser}. */
 	private MockHttpSession analystSession;
 	private MockHttpSession plannerSession;
 	private MockHttpSession adminSession;
+
+	@Test
+	void admittedExtremeValuesPersistWithoutMetricOverflow() throws Exception {
+		String created = execute(seriesWith(List.of(10000000000000.0, 0.0001)),
+				"""
+				[{"method":"SIMPLE_MOVING_AVERAGE","periods":1}]
+				""")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(1e26, 1e12), Double.class))
+				.andExpect(jsonPath("$.methods[0].mapePercent").value(closeTo(1e19, 1e5), Double.class))
+				.andReturn().getResponse().getContentAsString();
+		mvc.perform(get("/api/v1/forecasts/{id}", idOf(created)).session(planner()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(1e26, 1e12), Double.class))
+				.andExpect(jsonPath("$.methods[0].mapePercent").value(closeTo(1e19, 1e5), Double.class));
+	}
+
+	@Test
+	void mseIsCalculatedStoredAndReadBack() throws Exception {
+		String created = execute(seriesWith(List.of(10.0, 0.0, 5.0, 0.0)),
+				"""
+				[{"method":"SIMPLE_MOVING_AVERAGE","periods":1}]
+				""")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(50.0, EXCEL), Double.class))
+				.andReturn().getResponse().getContentAsString();
+		mvc.perform(get("/api/v1/forecasts/{id}", idOf(created)).session(planner()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.methods[0].mse").value(closeTo(50.0, EXCEL), Double.class));
+	}
 
 	@Test
 	void spokaneThroughTheApiMatchesTheSpreadsheet() throws Exception {
@@ -72,7 +102,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(status().isCreated())
 				.andExpect(header().exists("Location"))
 				.andExpect(jsonPath("$.evaluationStart").value("2020-06"))
-				.andExpect(jsonPath("$.calculationVersion").value("1.0"))
+				.andExpect(jsonPath("$.calculationVersion").value("1.1"))
 				.andExpect(jsonPath("$.measure").value("PRODUCCION"))
 				.andExpect(jsonPath("$.actuals.length()").value(30))
 				.andExpect(jsonPath("$.methods[0].method").value("SIMPLE_MOVING_AVERAGE"))
@@ -86,7 +116,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.methods[3].mapePercent", closeTo(5.7923763097286106, EXCEL_PERCENT)))
 				.andExpect(jsonPath("$.methods[0].pairsUsed").value(25))
 				.andExpect(jsonPath("$.methods[2].pairsUsed").value(25))
-				// El suavizamiento pronostica desde el periodo 2 aunque se evalúe desde el 6 (respuesta 7).
+				// El suavizamiento pronostica desde el periodo 2 aunque se evalÃºe desde el 6 (respuesta 7).
 				.andExpect(jsonPath("$.methods[0].forecasts.length()").value(25))
 				.andExpect(jsonPath("$.methods[2].forecasts.length()").value(29))
 				.andExpect(jsonPath("$.methods[0].forecasts[0].period").value("2020-06"))
@@ -99,7 +129,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andReturn().getResponse().getContentAsString();
 		long id = idOf(created);
 
-		// Lo guardado se lee igual, también por el planeador (solo lectura).
+		// Lo guardado se lee igual, tambiÃ©n por el planeador (solo lectura).
 		mvc.perform(get("/api/v1/forecasts/{id}", id).session(planner()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.methods[2].mad", closeTo(16.252331083901609, EXCEL)))
@@ -109,7 +139,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$[0].id").value(id))
 				.andExpect(jsonPath("$[0].methods.length()").value(4));
 
-		// Comparación: Holt tiene el menor MAD y el menor MAPE; todos los MAPE (5,8 % a 7,5 %) están bajo el 10 %.
+		// ComparaciÃ³n: Holt tiene el menor MAD y el menor MAPE; todos los MAPE (5,8 % a 7,5 %) estÃ¡n bajo el 10 %.
 		mvc.perform(get("/api/v1/indicators/executions/{id}", id).session(planner()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.executionId").value(id))
@@ -131,7 +161,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 
 	@Test
 	void acmeThroughTheApiMatchesTheSpreadsheet() throws Exception {
-		// Pesos tal como están en el Excel, con 0,1 al dato más reciente (pregunta 2, cerrada el 2026-11-05).
+		// Pesos tal como estÃ¡n en el Excel, con 0,1 al dato mÃ¡s reciente (pregunta 2, cerrada el 2026-11-05).
 		String created = execute(seriesWith(golden("acme.csv")), """
 				[{"method": "SIMPLE_MOVING_AVERAGE", "periods": 4},
 				 {"method": "WEIGHTED_MOVING_AVERAGE", "weights": [0.1, 0.2, 0.3, 0.4]},
@@ -146,7 +176,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.methods[1].mapePercent", closeTo(27.273668130810985, EXCEL_PERCENT)))
 				.andReturn().getResponse().getContentAsString();
 
-		// El ponderado es el mejor por MAD y por MAPE, pero ningún MAPE (27 % a 37 %) baja del 10 %.
+		// El ponderado es el mejor por MAD y por MAPE, pero ningÃºn MAPE (27 % a 37 %) baja del 10 %.
 		mvc.perform(get("/api/v1/indicators/executions/{id}", idOf(created)).session(planner()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.evaluationFrom").value("2020-05"))
@@ -265,7 +295,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 				.andExpect(jsonPath("$.executedByUsername").value(ADMIN))
 				.andExpect(jsonPath("$.actuals.length()").value(3))
 				.andExpect(jsonPath("$.actuals[0].period").value("2020-02"))
-				// SMA n=2 sobre 20, 30, 40: pronóstico de mayo = (30 + 40) / 2, aunque mayo tenga dato cargado.
+				// SMA n=2 sobre 20, 30, 40: pronÃ³stico de mayo = (30 + 40) / 2, aunque mayo tenga dato cargado.
 				.andExpect(jsonPath("$.methods[0].nextForecast.period").value("2020-05"))
 				.andExpect(jsonPath("$.methods[0].nextForecast.forecast").value(35))
 				.andExpect(jsonPath("$.methods[0].pairsUsed").value(1));
@@ -279,7 +309,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 		expectRangeError(seriesId, "\"to\": \"2020-04\"", sma, "to");
 		expectRangeError(seriesId, "\"from\": \"2020-03\", \"to\": \"2020-02\"", sma, "to");
 		expectRangeError(seriesId, "\"from\": \"2020-13\"", sma, "from");
-		// n mayor que los meses del periodo elegido: error del parámetro, como con la serie completa.
+		// n mayor que los meses del periodo elegido: error del parÃ¡metro, como con la serie completa.
 		expectRangeError(seriesId, "\"from\": \"2020-02\"",
 				"[{\"method\": \"SIMPLE_MOVING_AVERAGE\", \"periods\": 3}]", "methods[0].periods");
 	}
@@ -348,7 +378,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 		return mvc.perform(request);
 	}
 
-	/** Serie nueva con estos valores desde enero de 2020, cargada por el analista con la API de históricos. */
+	/** Serie nueva con estos valores desde enero de 2020, cargada por el analista con la API de histÃ³ricos. */
 	private long seriesWith(List<Double> values) throws Exception {
 		long seriesId = newSeries();
 		String observations = IntStream.range(0, values.size())
@@ -383,7 +413,7 @@ class ForecastApiTest extends ApiIntegrationTest {
 		return analystSession;
 	}
 
-	/** Solo el administrador ejecuta pronósticos (ADR 05). */
+	/** Solo el administrador ejecuta pronÃ³sticos (ADR 05). */
 	private MockHttpSession admin() throws Exception {
 		if (adminSession == null) {
 			adminSession = login(ADMIN, ADMIN_PASSWORD);

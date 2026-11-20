@@ -138,6 +138,9 @@ Contrato completo de la API y matriz de permisos: [docs/architecture/api.md](doc
 
 ## Verificación realizada
 
+- `mvnw verify` (19-11-2026, revisión local con Java 21): **137 pruebas, 0 fallos, 0 errores y
+  0 omitidas**, con `BUILD SUCCESS`, JAR generado y reporte JaCoCo. Esta corrida usa H2;
+  no constituye una nueva verificación contra PostgreSQL ni del frontend.
 - `mvnw verify` (05-11-2026, roles): 134 pruebas. Matriz 3 roles × 10 endpoints con el nuevo alcance
   (solo el administrador ejecuta pronósticos; el planeador ya no ejecuta ni carga).
 - `mvnw verify` (05-11-2026, fase 3): 144 pruebas, sin advertencias de `-Xlint:all`. Agrega la tabla

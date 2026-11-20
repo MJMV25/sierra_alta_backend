@@ -32,7 +32,7 @@ history  ◄── forecast ──►  indicators         auth protege los acces
 | Protección de sesión            | Cookie `HttpOnly` + `SameSite=Lax` (+ `Secure` con HTTPS), cambio de id al autenticar |
 | CSRF                            | Cookie `XSRF-TOKEN` + cabecera `X-XSRF-TOKEN`, renovado en el login |
 | Autorización en servidor        | Matriz única en `SecurityConfig`, por permiso; denegación por defecto; `@PreAuthorize` en los casos de uso como segunda verificación |
-| Privilegio mínimo               | Alcance de cada rol en `RoleCode`; el admin no hereda permisos de negocio |
+| Privilegio mínimo               | Alcance de cada rol en `RoleCode`; el administrador tiene todos los permisos, el planeador consulta y exporta y el analista carga históricos |
 | Cuentas inactivas               | No pueden autenticarse; `AccountStatusFilter` cierra sus sesiones abiertas |
 | Sin enumeración de usuarios     | Mismo 401 para usuario inexistente, clave errónea o cuenta inactiva |
 | Auditoría                       | Tabla `evento`: LOGIN, LOGOUT, ACCESS_DENIED, CSRF_REJECTED y cambios de cuentas, sin secretos |
@@ -54,7 +54,13 @@ Migraciones Flyway en `src/main/resources/db/migration`:
   con sus `resultado` y `metrica`; `ejecucion` guarda la versión de datos, la ventana de evaluación y la
   clave de idempotencia. Reemplaza el diseño de un solo método de V2 (sus tablas de resultados estaban vacías).
 
-Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunca editando una aplicada.
+- `V5__umbral_de_aceptacion.sql`: guarda el umbral MAPE de cada ejecución para conservar el criterio
+  usado en la comparación de métodos.
+- `V6__roles_sin_supervisor.sql`: elimina SUPERVISOR y convierte sus cuentas en analistas inactivas.
+
+Los cambios de esquema siempre se hacen con una nueva migración de versión consecutiva (la siguiente
+es `V8__...`); nunca editando una aplicada. V7 incorpora MSE y amplía la precisión de métricas
+a NUMERIC(38,10) para persistir errores cuadrados y porcentajes extremos admitidos.
 
 ## Pruebas
 

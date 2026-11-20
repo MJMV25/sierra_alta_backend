@@ -18,6 +18,7 @@ class ErrorIndicatorsTest {
 		assertThat(indicators.mape().orElseThrow()).isCloseTo((0.2 + 1.0) / 2, within(1e-12));
 		assertThat(indicators.pairsUsed()).isEqualTo(3);
 		assertThat(indicators.mapeExcluded()).isEqualTo(1);
+		assertThat(indicators.mse().orElseThrow()).isCloseTo(66.75, within(1e-12));
 	}
 
 	@Test
@@ -27,6 +28,7 @@ class ErrorIndicatorsTest {
 		assertThat(indicators.mad()).hasValue(1.5);
 		assertThat(indicators.mape()).isEmpty();
 		assertThat(indicators.mapeExcluded()).isEqualTo(2);
+		assertThat(indicators.mse()).hasValue(4.5);
 	}
 
 	@Test
@@ -36,5 +38,18 @@ class ErrorIndicatorsTest {
 		assertThat(indicators.mad()).isEmpty();
 		assertThat(indicators.mape()).isEmpty();
 		assertThat(indicators.pairsUsed()).isZero();
+		assertThat(indicators.mse()).isEmpty();
+	}
+
+	@Test
+	void mseUsesSquaredErrorsRegardlessOfTheirSign() {
+		assertThat(ErrorIndicators.of(List.of(new ForecastPair(10, 7), new ForecastPair(10, 14)))
+				.mse()).hasValue(12.5);
+	}
+
+	@Test
+	void exactForecastHasZeroMse() {
+		assertThat(ErrorIndicators.of(List.of(new ForecastPair(0, 0), new ForecastPair(10, 10)))
+				.mse()).hasValue(0);
 	}
 }

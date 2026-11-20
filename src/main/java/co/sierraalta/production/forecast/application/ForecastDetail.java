@@ -38,6 +38,6 @@ public record ForecastDetail(Long id, Long seriesId, String productCode, String 
 	 */
 	public record MethodResult(MethodCode method, Integer periods, List<BigDecimal> weights, BigDecimal alpha,
 			BigDecimal beta, List<Point> forecasts, Point nextForecast, BigDecimal mad, BigDecimal mapePercent,
-			int pairsUsed, int mapeExcluded) {
+			int pairsUsed, int mapeExcluded, BigDecimal mse) {
 	}
 }

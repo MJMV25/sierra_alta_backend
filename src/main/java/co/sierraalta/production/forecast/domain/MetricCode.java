@@ -1,7 +1,8 @@
 package co.sierraalta.production.forecast.domain;
 
-/** Indicadores guardados por método (el MSE quedó fuera del proyecto, respuesta 9). */
+/** Indicadores guardados por método; MSE incorporado para la verificación académica del corte 2. */
 public enum MetricCode {
 	MAD,
-	MAPE
+	MAPE,
+	MSE
 }

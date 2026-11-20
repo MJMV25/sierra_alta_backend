@@ -100,12 +100,28 @@ class ExcelReferenceTest {
 		});
 	}
 
+	/** Referencia independiente derivada de celdas del Excel; pendiente de validación de Industrial. */
+	@ParameterizedTest(name = "MSE {0}")
+	@MethodSource("cases")
+	void mseMatchesIndependentSpreadsheetDerivation(ReferenceCase reference) throws IOException {
+		List<Double> actuals = readRows(reference.file()).stream().map(row -> Double.parseDouble(row[1])).toList();
+		Map<String, Forecast> forecasts = new LinkedHashMap<>();
+		reference.methods().forEach((method, algorithm) -> forecasts.put(method, algorithm.forecast(actuals)));
+		int start = Forecast.commonEvaluationStart(forecasts.values());
+		for (String[] row : readRows("mse-reference.csv")) {
+			if (!reference.file().equals(row[0] + ".csv")) continue;
+			double mse = ErrorIndicators.of(forecasts.get(row[1]).pairs(actuals, start)).mse().orElseThrow();
+			assertThat(mse).as("MSE %s; celdas %s", row[1], row[3])
+					.isCloseTo(Double.parseDouble(row[2]), within(TOLERANCE));
+		}
+	}
+
 	private static List<String[]> readRows(String file) throws IOException {
 		var resource = ExcelReferenceTest.class.getResourceAsStream("/forecast/golden/" + file);
 		try (var input = Objects.requireNonNull(resource, file);
 				var reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
 			List<String[]> rows = new ArrayList<>();
-			reader.lines().filter(line -> !line.startsWith("#") && !line.startsWith("period"))
+			reader.lines().filter(line -> !line.startsWith("#") && !line.startsWith("period") && !line.startsWith("case,"))
 					.forEach(line -> rows.add(line.split(",", -1)));
 			return rows;
 		}

@@ -50,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ForecastService {
 
 	/** Cambia cuando cambie una fórmula o regla de cálculo; queda guardada en cada ejecución. */
-	static final String CALCULATION_VERSION = "1.0";
+	static final String CALCULATION_VERSION = "1.1";
 
 	private static final Pattern IDEMPOTENCY_KEY = Pattern.compile("^[A-Za-z0-9_-]{1,64}$");
 
@@ -194,6 +194,7 @@ public class ForecastService {
 		List<Double> actuals = observed.stream().map(o -> o.value().doubleValue()).toList();
 		ErrorIndicators indicators = ErrorIndicators.of(forecast.pairs(actuals, evaluationStart));
 		List<MetricValue> metrics = List.of(
+				new MetricValue(MetricCode.MSE, stored(indicators.mse()), indicators.pairsUsed(), 0),
 				new MetricValue(MetricCode.MAD, stored(indicators.mad()), indicators.pairsUsed(), 0),
 				new MetricValue(MetricCode.MAPE, stored(indicators.mape()),
 						indicators.pairsUsed() - indicators.mapeExcluded(), indicators.mapeExcluded()));
@@ -233,7 +234,8 @@ public class ForecastService {
 				run.getWeights().stream().map(Decimals::plain).toList(), Decimals.plain(run.getAlpha()),
 				Decimals.plain(run.getBeta()), fitted, next, Decimals.plain(mad.getValue()),
 				mape.getValue() == null ? null : Decimals.plain(mape.getValue().multiply(HUNDRED)),
-				mad.getPairsUsed(), mape.getPairsExcluded());
+				mad.getPairsUsed(), mape.getPairsExcluded(),
+				run.metric(MetricCode.MSE).map(MetricValue::getValue).map(Decimals::plain).orElse(null));
 	}
 
 	private static ForecastDetail.Point point(ResultPoint point) {

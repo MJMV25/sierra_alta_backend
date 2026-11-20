@@ -40,6 +40,9 @@ build/
 *.docx
 *.xlsx
 ~$*
+!docs/pruebas/corte2/*.docx
+!docs/pruebas/corte2/*.xlsx
+!docs/pruebas/corte2/evidencias/*.xlsx
 
 ### Datos reales de la empresa (se cargan por la API, ver docs/datos/README.md) ###
 datos-locales/

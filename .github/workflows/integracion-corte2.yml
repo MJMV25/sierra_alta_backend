@@ -1,0 +1,95 @@
+name: Integracion corte 2
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integracion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: corte2
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa-ci-isolated
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa -d corte2"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: MJMV25/sierra_alta_frontend
+          ref: 9650bd666461acd32271e5e61485fb9a5dacaaa0
+          path: frontend
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Backend completo contra PostgreSQL
+        env:
+          TEST_DB_URL: jdbc:postgresql://localhost:5432/corte2
+          TEST_DB_USERNAME: qa
+          TEST_DB_PASSWORD: qa-ci-isolated
+        run: bash mvnw -B verify
+      - name: Frontend y cobertura
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:coverage -- --maxWorkers=1 --reporter=default --reporter=json --outputFile=coverage/test-results.json
+          npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Instalar navegador de pruebas
+        run: |
+          pip install playwright==1.65.2
+          python -m playwright install --with-deps chromium
+      - name: Iniciar API y React
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/corte2
+          DB_USERNAME: qa
+          DB_PASSWORD: qa-ci-isolated
+          BOOTSTRAP_ADMIN_USERNAME: admin
+          BOOTSTRAP_ADMIN_PASSWORD: admin-password-123
+          DEMO_USERS_PASSWORD: demo-password-123
+          SERVER_PORT: '18081'
+          CORS_ALLOWED_ORIGINS: http://localhost:15173
+          BACKEND_URL: http://localhost:18081
+        run: |
+          mkdir -p target/e2e
+          java -Xmx512m -jar target/sierra-alta-backend-0.1.0-SNAPSHOT.jar --spring.profiles.active=dev > target/e2e/backend.log 2>&1 &
+          (cd frontend && npm run dev -- --host 127.0.0.1 --port 15173 --strictPort) > target/e2e/frontend.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl --fail --silent http://localhost:15173/actuator/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Navegador real hacia API y PostgreSQL
+        run: python scripts/ci_integracion.py
+      - name: Resumen verificable de resultados
+        if: always()
+        run: python scripts/resumen_pruebas.py
+      - name: Evidencias originales de la corrida
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corte2-integracion-${{ github.sha }}
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+            target/e2e/
+            frontend/coverage/
+          retention-days: 30
