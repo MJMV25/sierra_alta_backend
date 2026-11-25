@@ -108,13 +108,12 @@ public class SecurityConfig {
 				// auth: administración de cuentas.
 				.requestMatchers(API + "/admin/**").hasAuthority(USERS_MANAGE.authority())
 
-				// history: lectura y carga de históricos.
+				// history: lectura y edición de la hoja de datos.
 				.requestMatchers(HttpMethod.GET, API + "/history/**").hasAuthority(HISTORY_READ.authority())
-				.requestMatchers(HttpMethod.POST, API + "/history/**").hasAuthority(HISTORY_WRITE.authority())
-				.requestMatchers(HttpMethod.PUT, API + "/history/**").hasAuthority(HISTORY_WRITE.authority())
 				.requestMatchers(HttpMethod.PATCH, API + "/history/**").hasAuthority(HISTORY_WRITE.authority())
 
-				// forecast: ejecutar y consultar pronósticos.
+				// forecast: recalcular sin guardar (todos los que consultan), guardar y consultar pronósticos.
+				.requestMatchers(HttpMethod.POST, API + "/forecasts/preview").hasAuthority(FORECAST_READ.authority())
 				.requestMatchers(HttpMethod.POST, API + "/forecasts/**").hasAuthority(FORECAST_EXECUTE.authority())
 				.requestMatchers(HttpMethod.GET, API + "/forecasts/**").hasAuthority(FORECAST_READ.authority())
 

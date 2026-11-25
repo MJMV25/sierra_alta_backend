@@ -29,9 +29,13 @@ public record MethodRequest(
 		BigDecimal alpha,
 
 		@Digits(integer = 1, fraction = 10, message = "Use como máximo 10 decimales.")
-		BigDecimal beta) {
+		BigDecimal beta,
+
+		// L del estacional multiplicativo: periodos por ciclo (12 en una serie mensual).
+		@Max(value = 120, message = "L no puede superar 120 periodos.")
+		Integer seasonLength) {
 
 	public MethodSpec toSpec() {
-		return new MethodSpec(method, periods, weights, alpha, beta);
+		return new MethodSpec(method, periods, weights, alpha, beta, seasonLength);
 	}
 }

@@ -31,7 +31,7 @@ public class Observation {
 	private Series series;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "carga_id", nullable = false, updatable = false)
+	@JoinColumn(name = "carga_id", nullable = false)
 	private DataLoad load;
 
 	@Column(name = "periodo", nullable = false, updatable = false)
@@ -49,6 +49,12 @@ public class Observation {
 		this.load = load;
 		this.period = period.atDay(1);
 		this.value = value;
+	}
+
+	/** Corrige el valor; {@code correction} es el guardado que lo cambió y pasa a ser la carga del mes. */
+	public void correct(BigDecimal newValue, DataLoad correction) {
+		this.value = newValue;
+		this.load = correction;
 	}
 
 	public YearMonth getPeriod() {

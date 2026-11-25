@@ -1,9 +1,9 @@
 package co.sierraalta.production.forecast.application;
 
 import java.time.YearMonth;
+import java.util.List;
 import java.util.Optional;
 
-import co.sierraalta.production.forecast.domain.ForecastExecution;
 import co.sierraalta.production.forecast.domain.MethodRun;
 import co.sierraalta.production.forecast.domain.MetricCode;
 import co.sierraalta.production.forecast.domain.MetricValue;
@@ -29,21 +29,22 @@ class ForecastIndicatorsSource implements ExecutionIndicatorsSource {
 	@Override
 	@Transactional(readOnly = true)
 	public Optional<StoredIndicators> find(Long executionId) {
-		return executions.findById(executionId).map(ForecastIndicatorsSource::stored);
+		return executions.findById(executionId).map(execution -> stored(execution.getId(), execution.getSeriesId(),
+				execution.getEvaluationStart(), execution.getInputs().getLast().getPeriod(), execution.getMethods()));
 	}
 
-	private static StoredIndicators stored(ForecastExecution execution) {
-		YearMonth from = execution.getEvaluationStart();
-		YearMonth to = from == null ? null : execution.getInputs().getLast().getPeriod();
-		return new StoredIndicators(execution.getId(), execution.getSeriesId(), from, to,
-				execution.getMapeThreshold(),
-				execution.getMethods().stream().map(ForecastIndicatorsSource::indicators).toList());
+	/** También lo usa la vista previa, con {@code executionId} nulo. */
+	static StoredIndicators stored(Long executionId, Long seriesId, YearMonth evaluationStart, YearMonth lastPeriod,
+			List<MethodRun> runs) {
+		return new StoredIndicators(executionId, seriesId, evaluationStart,
+				evaluationStart == null ? null : lastPeriod,
+				runs.stream().map(ForecastIndicatorsSource::indicators).toList());
 	}
 
 	private static MethodIndicators indicators(MethodRun run) {
 		MetricValue mad = run.metric(MetricCode.MAD).orElseThrow();
 		MetricValue mape = run.metric(MetricCode.MAPE).orElseThrow();
 		return new MethodIndicators(run.getMethod().name(), mad.getValue(), mape.getValue(), mad.getPairsUsed(),
-				mape.getPairsExcluded());
+				mape.getPairsExcluded(), run.getMethod().comparable());
 	}
 }

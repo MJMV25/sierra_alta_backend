@@ -53,6 +53,11 @@ Migraciones Flyway en `src/main/resources/db/migration`:
 - `V4__ejecuciones_por_metodo.sql`: una ejecución agrupa de 1 a 4 métodos (`metodo_ejecutado`, `peso`)
   con sus `resultado` y `metrica`; `ejecucion` guarda la versión de datos, la ventana de evaluación y la
   clave de idempotencia. Reemplaza el diseño de un solo método de V2 (sus tablas de resultados estaban vacías).
+- `V5` a `V9`: umbral de aceptación, roles sin supervisor, datos de prueba del Excel (Spokane y ACME),
+  regresión lineal y estacional multiplicativo.
+- `V10__hoja_de_datos_y_sin_umbral.sql`: quita `ejecucion.umbral_mape`, marca Spokane y ACME como
+  `producto.ejemplo`, vuelve a crear las 4 referencias de la empresa y agrega `cambio_observacion`, el
+  historial de cada mes agregado, corregido o borrado desde la hoja ([ADR 13](adr/0013-hoja-de-datos-en-vivo.md)).
 
 Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunca editando una aplicada.
 
@@ -71,3 +76,9 @@ Los cambios de esquema siempre se hacen con una nueva migración `V3__...`; nunc
 - [ADR 05 — Alcance de roles en código y sesión revalidada](adr/0005-alcance-de-roles.md)
 - [ADR 06 — Cuentas de base de datos con privilegio mínimo](adr/0006-cuentas-de-base-de-datos.md)
 - [ADR 07 — Reglas de cálculo, evaluación y datos acordadas con Industrial](adr/0007-reglas-de-calculo.md)
+- [ADR 08 — Regresión lineal como quinto método](adr/0008-regresion-lineal.md)
+- [ADR 09 — Verificación con los datos del Excel](adr/0009-verificacion-con-datos-del-excel.md)
+- [ADR 10 — Ejecución de pronósticos idempotente](adr/0010-idempotencia-de-pronosticos.md)
+- [ADR 11 — Rendimiento medido y respaldo con restauración de prueba](adr/0011-rendimiento-y-recuperacion.md)
+- [ADR 12 — Estacional multiplicativo idéntico al Excel](adr/0012-estacional-multiplicativo.md)
+- [ADR 13 — Hoja de datos editable, recálculo en vivo y sin estado de aceptación](adr/0013-hoja-de-datos-en-vivo.md)

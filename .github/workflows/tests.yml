@@ -68,6 +68,7 @@ jobs:
               printf "| Ramas | %s | %d / %d |\n", pct(bc, bm), bc, bc + bm
               printf "| Instrucciones | %s | %d / %d |\n", pct(ic, im), ic, ic + im
               printf "| Métodos | %s | %d / %d |\n", pct(mc, mm), mc, mc + mm
+              print "\nMínimo exigido: 90 % de líneas (cobertura.lineas.minimo en pom.xml); por debajo, el pipeline falla."
               print "\nReporte completo: artefacto **cobertura-backend** (abra index.html)."
             }' "$csv" >> "$GITHUB_STEP_SUMMARY"
 

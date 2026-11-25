@@ -1,6 +1,5 @@
 package co.sierraalta.production.indicators.application;
 
-import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -17,11 +16,11 @@ public interface ExecutionIndicatorsSource {
 	Optional<StoredIndicators> find(Long executionId);
 
 	/**
+	 * @param executionId    nulo en un recálculo sin guardar (vista previa)
 	 * @param evaluationFrom primer periodo evaluado en todos los métodos; nulo si no hubo ninguno
 	 * @param evaluationTo   último periodo evaluado; nulo si no hubo ninguno
-	 * @param mapeThreshold  umbral vigente al ejecutar, como fracción; nulo en ejecuciones anteriores a él
 	 */
 	record StoredIndicators(Long executionId, Long seriesId, YearMonth evaluationFrom, YearMonth evaluationTo,
-			BigDecimal mapeThreshold, List<MethodIndicators> methods) {
+			List<MethodIndicators> methods) {
 	}
 }

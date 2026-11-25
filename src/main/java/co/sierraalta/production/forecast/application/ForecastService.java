@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,10 @@ import co.sierraalta.production.history.application.HistoryService;
 import co.sierraalta.production.history.application.ObservationValue;
 import co.sierraalta.production.history.application.SeriesObservations;
 import co.sierraalta.production.history.application.SeriesReference;
-import co.sierraalta.production.indicators.application.IndicatorsProperties;
+import co.sierraalta.production.history.domain.Periodicity;
+import co.sierraalta.production.indicators.application.ExecutionComparison;
 import co.sierraalta.production.indicators.domain.ErrorIndicators;
+import co.sierraalta.production.indicators.domain.PeriodError;
 import co.sierraalta.production.shared.Decimals;
 import co.sierraalta.production.shared.error.BusinessRuleException;
 import co.sierraalta.production.shared.error.InvalidFieldException;
@@ -39,9 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Facade del pronóstico (ADR 04): lee la serie con el servicio público de {@code history}, ejecuta los
- * métodos, calcula MAD y MAPE con {@code indicators} en la ventana común (ADR 07) y guarda la ejecución,
- * la instantánea de entradas, los resultados, las métricas y el umbral de aceptación vigente en una sola
- * transacción.
+ * métodos y calcula MAD y MAPE con {@code indicators} en la ventana común (ADR 07). Guardar deja la
+ * ejecución, la instantánea de entradas, los resultados y las métricas en una sola transacción; la vista
+ * previa hace los mismos cálculos sin guardar nada (ADR 13).
  *
  * <p>Cada operación exige su permiso aunque la ruta ya lo verifique en {@code SecurityConfig}.
  */
@@ -61,20 +64,17 @@ public class ForecastService {
 
 	private final ForecastExecutionRepository executions;
 	private final HistoryService history;
-	private final IndicatorsProperties indicatorsProperties;
 	private final UserDirectory users;
 
-	public ForecastService(ForecastExecutionRepository executions, HistoryService history,
-			IndicatorsProperties indicatorsProperties, UserDirectory users) {
+	public ForecastService(ForecastExecutionRepository executions, HistoryService history, UserDirectory users) {
 		this.executions = executions;
 		this.history = history;
-		this.indicatorsProperties = indicatorsProperties;
 		this.users = users;
 	}
 
 	/**
-	 * Ejecuta los métodos pedidos. Si el mismo usuario reenvía una {@code idempotencyKey} ya usada, devuelve
-	 * la ejecución original sin calcular de nuevo (doble clic, reintento por red).
+	 * Ejecuta y guarda los métodos pedidos. Si el mismo usuario reenvía una {@code idempotencyKey} ya usada,
+	 * devuelve la ejecución original sin calcular de nuevo (doble clic, reintento por red).
 	 */
 	@PreAuthorize("hasAuthority('forecast:execute')")
 	public ExecutionOutcome execute(ForecastCommand command, Long actorId, String idempotencyKey) {
@@ -91,31 +91,41 @@ public class ForecastService {
 		requireDistinctMethods(command.methods());
 
 		SeriesObservations series = history.observations(command.seriesId());
-		if (series.observations().isEmpty()) {
-			throw new BusinessRuleException(
-					"La serie no tiene datos cargados; cargue sus históricos antes de pronosticar.");
-		}
-		List<ObservationValue> observed = inRange(series.observations(), command.from(), command.to());
-		List<Double> actuals = observed.stream().map(o -> o.value().doubleValue()).toList();
-		YearMonth firstMonth = observed.getFirst().period();
-
-		List<Forecast> forecasts = new ArrayList<>();
-		for (int i = 0; i < command.methods().size(); i++) {
-			forecasts.add(run(command.methods().get(i), i, actuals));
-		}
-		int start = Forecast.commonEvaluationStart(forecasts);
-
-		List<MethodRun> runs = new ArrayList<>();
-		for (int i = 0; i < forecasts.size(); i++) {
-			runs.add(methodRun(command.methods().get(i), forecasts.get(i), observed, firstMonth, start));
-		}
+		List<ObservationValue> observed = inRange(requireData(series.observations()), command.from(), command.to());
+		Calculation calculation = calculate(command.methods(), observed);
 		List<InputValue> inputs = observed.stream().map(o -> new InputValue(o.period(), o.value())).toList();
-		YearMonth evaluationStart = start < actuals.size() ? firstMonth.plusMonths(start) : null;
 		ForecastExecution saved = executions.save(new ForecastExecution(command.seriesId(), actorId,
-				CALCULATION_VERSION, series.dataVersion(), evaluationStart, idempotencyKey,
-				indicatorsProperties.mapeThreshold(), inputs, runs));
+				CALCULATION_VERSION, series.dataVersion(), calculation.evaluationStart(), idempotencyKey, inputs,
+				calculation.runs()));
 		return new ExecutionOutcome(detail(saved), true);
 	}
+
+	/**
+	 * Calcula sin guardar, con los datos guardados o con los que trae el pedido (hoja con cambios sin guardar,
+	 * o una prueba sobre los datos de ejemplo). Lo usan todos los que consultan pronósticos.
+	 */
+	@Transactional(readOnly = true)
+	@PreAuthorize("hasAuthority('forecast:read')")
+	public ForecastPreview preview(PreviewCommand command) {
+		ForecastCommand forecast = command.forecast();
+		requireDistinctMethods(forecast.methods());
+		SeriesObservations series = history.observations(forecast.seriesId());
+		boolean draft = command.actuals() != null;
+		List<ObservationValue> all = draft ? draftValues(command.actuals()) : series.observations();
+		List<ObservationValue> observed = inRange(requireData(all), forecast.from(), forecast.to());
+		Calculation calculation = calculate(forecast.methods(), observed);
+		List<ForecastDetail.Actual> actuals = observed.stream()
+				.map(o -> new ForecastDetail.Actual(o.period(), Decimals.plain(o.value())))
+				.toList();
+		YearMonth lastPeriod = observed.getLast().period();
+		return new ForecastPreview(series.seriesId(), series.productCode(), series.productName(), series.measure(),
+				series.periodicity(), series.unit(), draft ? null : series.dataVersion(), draft,
+				observed.getFirst().period(), lastPeriod, calculation.evaluationStart(), actuals,
+				calculation.runs().stream().map(ForecastService::methodResult).toList(),
+				ExecutionComparison.of(ForecastIndicatorsSource.stored(null, series.seriesId(),
+						calculation.evaluationStart(), lastPeriod, calculation.runs())));
+	}
+
 
 	/** Últimas 50 ejecuciones, de la más reciente a la más antigua; opcionalmente de una sola serie. */
 	@Transactional(readOnly = true)
@@ -127,6 +137,7 @@ public class ForecastService {
 				found.stream().map(ForecastExecution::getSeriesId).distinct().toList());
 		return found.stream()
 				.map(e -> new ForecastSummary(e.getId(), e.getSeriesId(), productName(references.get(e.getSeriesId())),
+						periodicity(references.get(e.getSeriesId())),
 						e.getExecutedAt(), e.getUserId(), e.getDataVersion(), e.getEvaluationStart(),
 						e.getMethods().stream().map(MethodRun::getMethod).toList()))
 				.toList();
@@ -158,6 +169,48 @@ public class ForecastService {
 			throw new InvalidFieldException("to", "El mes final no puede ser anterior al inicial.");
 		}
 		return all.stream().filter(o -> !o.period().isBefore(start) && !o.period().isAfter(end)).toList();
+	}
+
+	/** Métodos calculados sobre los mismos meses, con el primer periodo de la ventana común. */
+	private record Calculation(List<MethodRun> runs, YearMonth evaluationStart) {
+	}
+
+	private static Calculation calculate(List<MethodSpec> methods, List<ObservationValue> observed) {
+		List<Double> actuals = observed.stream().map(o -> o.value().doubleValue()).toList();
+		YearMonth firstMonth = observed.getFirst().period();
+		List<Forecast> forecasts = new ArrayList<>();
+		for (int i = 0; i < methods.size(); i++) {
+			forecasts.add(run(methods.get(i), i, actuals));
+		}
+		int start = Forecast.commonEvaluationStart(forecasts);
+		List<MethodRun> runs = new ArrayList<>();
+		for (int i = 0; i < forecasts.size(); i++) {
+			runs.add(methodRun(methods.get(i), forecasts.get(i), observed, firstMonth, start));
+		}
+		return new Calculation(runs, start < actuals.size() ? firstMonth.plusMonths(start) : null);
+	}
+
+	private static List<ObservationValue> requireData(List<ObservationValue> observations) {
+		if (observations.isEmpty()) {
+			throw new BusinessRuleException(
+					"La serie no tiene datos cargados; registre sus meses en la hoja antes de pronosticar.");
+		}
+		return observations;
+	}
+
+	/** Datos enviados para la vista previa: meses seguidos y sin repetir, como una serie guardada. */
+	private static List<ObservationValue> draftValues(List<PreviewCommand.Actual> actuals) {
+		List<PreviewCommand.Actual> sorted = actuals.stream()
+				.sorted(Comparator.comparing(PreviewCommand.Actual::period))
+				.toList();
+		for (int i = 1; i < sorted.size(); i++) {
+			YearMonth expected = sorted.get(i - 1).period().plusMonths(1);
+			if (!sorted.get(i).period().equals(expected)) {
+				throw new InvalidFieldException("actuals", "Los datos deben ser meses seguidos y sin repetir; falta o"
+						+ " sobra " + expected + ".");
+			}
+		}
+		return sorted.stream().map(a -> new ObservationValue(a.period(), a.value())).toList();
 	}
 
 	private static void requireDistinctMethods(List<MethodSpec> methods) {
@@ -198,7 +251,7 @@ public class ForecastService {
 				new MetricValue(MetricCode.MAPE, stored(indicators.mape()),
 						indicators.pairsUsed() - indicators.mapeExcluded(), indicators.mapeExcluded()));
 		return new MethodRun(spec.method(), spec.storedPeriods(), spec.storedWeights(), spec.storedAlpha(),
-				spec.storedBeta(), results, metrics);
+				spec.storedBeta(), spec.storedSeasonLength(), results, metrics);
 	}
 
 	private ForecastDetail detail(ForecastExecution execution) {
@@ -210,7 +263,7 @@ public class ForecastService {
 		String executedByUsername = users.usernames(List.of(execution.getUserId())).get(execution.getUserId());
 		return new ForecastDetail(execution.getId(), execution.getSeriesId(),
 				series == null ? null : series.productCode(), productName(series),
-				series == null ? null : series.measure(), series == null ? null : series.unit(),
+				series == null ? null : series.measure(), periodicity(series), series == null ? null : series.unit(),
 				execution.getDataVersion(), execution.getExecutedAt(), execution.getUserId(), executedByUsername,
 				actuals.isEmpty() ? null : actuals.getFirst().period(),
 				actuals.isEmpty() ? null : actuals.getLast().period(),
@@ -231,18 +284,24 @@ public class ForecastService {
 		MetricValue mape = run.metric(MetricCode.MAPE).orElseThrow();
 		return new ForecastDetail.MethodResult(run.getMethod(), run.getPeriods(),
 				run.getWeights().stream().map(Decimals::plain).toList(), Decimals.plain(run.getAlpha()),
-				Decimals.plain(run.getBeta()), fitted, next, Decimals.plain(mad.getValue()),
+				Decimals.plain(run.getBeta()), run.getSeasonLength(), fitted, next, Decimals.plain(mad.getValue()),
 				mape.getValue() == null ? null : Decimals.plain(mape.getValue().multiply(HUNDRED)),
 				mad.getPairsUsed(), mape.getPairsExcluded());
 	}
 
 	private static ForecastDetail.Point point(ResultPoint point) {
+		PeriodError error = PeriodError.of(point.getActual(), point.getForecast());
 		return new ForecastDetail.Point(point.getPeriod(), Decimals.plain(point.getForecast()),
-				Decimals.plain(point.getActual()));
+				Decimals.plain(point.getActual()), error == null ? null : Decimals.plain(error.error()),
+				error == null ? null : Decimals.plain(error.absolutePercent()));
 	}
 
 	private static String productName(SeriesReference series) {
 		return series == null ? null : series.productName();
+	}
+
+	private static Periodicity periodicity(SeriesReference series) {
+		return series == null ? null : series.periodicity();
 	}
 
 	private static BigDecimal stored(double value) {

@@ -35,7 +35,7 @@ class RoleScopeTest extends ApiIntegrationTest {
 
 	private static final Set<String> ADMIN_ONLY = Set.of("ADMIN");
 	private static final Set<String> READERS = Set.of("ADMIN", "PLANNER", "ANALYST");
-	private static final Set<String> LOADERS = Set.of("ADMIN", "ANALYST");
+	private static final Set<String> SAVERS = Set.of("ADMIN", "ANALYST");
 
 	private static final Map<String, String> USER_BY_ROLE = Map.of(
 			"ADMIN", ADMIN,
@@ -55,9 +55,11 @@ class RoleScopeTest extends ApiIntegrationTest {
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/roles", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/admin/security-events", ADMIN_ONLY, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/history/products", READERS, 200),
-			new Endpoint(HttpMethod.GET, "/api/v1/history/series/1/observations", READERS, 200),
-			new Endpoint(HttpMethod.POST, "/api/v1/history/series/1/observations", LOADERS, 400),
-			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", ADMIN_ONLY, 400),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/series/{serie}/observations", READERS, 200),
+			new Endpoint(HttpMethod.GET, "/api/v1/history/series/{serie}/changes", READERS, 200),
+			new Endpoint(HttpMethod.PATCH, "/api/v1/history/observations", ADMIN_ONLY, 400),
+			new Endpoint(HttpMethod.POST, "/api/v1/forecasts/preview", READERS, 400),
+			new Endpoint(HttpMethod.POST, "/api/v1/forecasts", SAVERS, 400),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts", READERS, 200),
 			new Endpoint(HttpMethod.GET, "/api/v1/forecasts/999999", READERS, 404),
 			new Endpoint(HttpMethod.GET, "/api/v1/indicators/executions/999999", READERS, 404));
@@ -80,14 +82,14 @@ class RoleScopeTest extends ApiIntegrationTest {
 		MockHttpSession session = login(USER_BY_ROLE.get(role), "ADMIN".equals(role) ? ADMIN_PASSWORD : DEMO_PASSWORD);
 		boolean allowed = endpoint.allowedRoles().contains(role);
 
-		mvc.perform(request(endpoint.method(), endpoint.path()).session(session).with(xsrf()))
+		mvc.perform(request(endpoint.method(), path(endpoint)).session(session).with(xsrf()))
 				.andExpect(status().is(allowed ? endpoint.allowedStatus() : 403));
 	}
 
 	@ParameterizedTest(name = "anónimo -> {0}")
 	@MethodSource("endpoints")
 	void anonymousRequestsNeedASession(Endpoint endpoint) throws Exception {
-		mvc.perform(request(endpoint.method(), endpoint.path()).with(xsrf()))
+		mvc.perform(request(endpoint.method(), path(endpoint)).with(xsrf()))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.code").value("authentication-required"));
 	}
@@ -114,6 +116,11 @@ class RoleScopeTest extends ApiIntegrationTest {
 		assertThat(events.findAll()).filteredOn(event -> event.getType() == SecurityEventType.ACCESS_DENIED
 				&& event.getResult() == SecurityEventResult.DENIED).hasSizeGreaterThan(0);
 		assertThat(events.count()).isGreaterThan(before);
+	}
+
+	/** {serie} es la serie del caso Spokane que crea V7. */
+	private String path(Endpoint endpoint) {
+		return endpoint.path().replace("{serie}", String.valueOf(excelCase("CASO-1-SPOKANE")));
 	}
 
 	@Test

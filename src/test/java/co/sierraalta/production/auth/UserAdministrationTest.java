@@ -165,7 +165,7 @@ class UserAdministrationTest extends ApiIntegrationTest {
 		mvc.perform(get("/api/v1/admin/roles").session(admin))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.code == 'ADMIN')].permissions[*]", hasItem("users:manage")))
-				.andExpect(jsonPath("$[?(@.code == 'ANALYST')].permissions[*]", hasItem("history:write")));
+				.andExpect(jsonPath("$[?(@.code == 'ANALYST')].permissions[*]", hasItem("forecast:execute")));
 	}
 
 	@Test

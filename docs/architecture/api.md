@@ -79,36 +79,42 @@ cuentas no se eliminan, se desactivan.
 |--------|-----------------------------------------------|-----------------|--------------------|
 | GET    | `/api/v1/history/products`                    | `history:read`  | → `[ProductSummary]` |
 | GET    | `/api/v1/history/series/{id}/observations`    | `history:read`  | → `SeriesObservations` (404 si no existe) |
-| POST   | `/api/v1/history/series/{id}/observations`    | `history:write` | `{observations: [{period, value}]}` → 201 `LoadSummary` |
+| GET    | `/api/v1/history/series/{id}/changes`         | `history:read`  | → últimos 500 `[ChangeEntry]` (404 si no existe) |
+| PATCH  | `/api/v1/history/observations`                | `history:write` | `{series: [{seriesId, dataVersion?, changes: [{period, value}]}]}` → `[EditSummary]` |
 
-`ProductSummary`: `{ id, code, name, series: [{ id, measure, periodicity, unit, firstPeriod, lastPeriod,
-observations, dataVersion }] }`; solo referencias activas, ordenadas por nombre. Una serie sin datos trae
-`observations: 0` y periodos y `dataVersion` nulos.
+`ProductSummary`: `{ id, code, name, sample, series: [{ id, measure, periodicity, unit, firstPeriod,
+lastPeriod, observations, dataVersion }] }`; solo referencias activas, ordenadas por nombre. `sample` es
+verdadero en los datos de ejemplo del Excel (Spokane y ACME), que no se pueden modificar. Una serie sin datos
+trae `observations: 0` y periodos nulos.
 `SeriesObservations`: `{ seriesId, productCode, productName, measure, periodicity, unit, dataVersion,
 observations: [{ period: "2026-09", value: 155 }] }`, del mes más antiguo al más reciente.
-`LoadSummary`: `{ loadId, seriesId, observations, firstPeriod, lastPeriod, loadedAt }`.
 
-Los periodos usan el formato `AAAA-MM`. `dataVersion` es el id de la última carga de la serie: la
-"versión de datos" que acompañará a pronósticos y exportaciones. `measure` es `PRODUCCION` en las 4
-referencias: la interfaz debe rotularla como producción (ADR 07).
+Los periodos usan el formato `AAAA-MM`. `dataVersion` es el id de la última carga (guardado de la hoja)
+de la serie: la "versión de datos" que acompaña a pronósticos y exportaciones. `measure` es `PRODUCCION`
+en las 4 referencias de la empresa: la interfaz la rotula como producción (ADR 07).
 
-Reglas de la carga (todo el lote o nada, [ADR 07](adr/0007-reglas-de-calculo.md)):
+**Guardar la hoja** ([ADR 13](adr/0013-hoja-de-datos-en-vivo.md)): cada cambio pone el valor de un mes
+(lo agrega o lo corrige) o, con `value: null`, lo borra. Se guardan todas las series o ninguna; un mes
+que queda con el mismo valor no cuenta como cambio. `EditSummary`: `{ seriesId, dataVersion, added,
+corrected, removed }`. `ChangeEntry`: `{ loadId, period, previousValue, newValue, changedAt, changedBy }`
+(`previousValue` nulo: mes agregado; `newValue` nulo: mes borrado).
 
 | Caso | HTTP | `code` |
 |------|------|--------|
-| Lote vacío o con más de 240 meses; periodo que no es `AAAA-MM`; cantidad nula, negativa o con más de 4 decimales | 400 | `validation` (`errors[].field` como `observations[2].value`) |
-| Mes que ya tiene dato en la serie | 409 | `conflict` |
-| Mes repetido dentro del lote, mes posterior al mes en curso (hora de Colombia) o carga que dejaría meses sin dato | 422 | `business-rule` (el detalle nombra los meses) |
+| Sin series o sin cambios; más de 50 series o 600 meses por serie; serie repetida; periodo que no es `AAAA-MM`; cantidad negativa o no entera | 400 | `validation` (`errors[].field` como `series[0].changes[2].value`) |
+| `dataVersion` distinta de la actual (otro guardó antes) | 409 | `conflict` |
+| Datos de ejemplo; mes repetido; mes posterior al mes en curso (hora de Colombia); borrar un mes sin dato o que no es de los últimos; dejar meses sin dato | 422 | `business-rule` (el detalle nombra los meses) |
 
 ### forecast (funcional)
 
 | Método | Ruta                          | Permiso            | Cuerpo / respuesta |
 |--------|-------------------------------|--------------------|--------------------|
+| POST   | `/api/v1/forecasts/preview`   | `forecast:read`    | `{seriesId, from?, to?, methods: [...], actuals?: [{period, value}]}` → `ForecastPreview` (no guarda nada) |
 | POST   | `/api/v1/forecasts`           | `forecast:execute` | `{seriesId, from?, to?, methods: [...]}` → 201 `ForecastDetail` (200 si se reenvía la misma `Idempotency-Key`) |
 | GET    | `/api/v1/forecasts?seriesId=` | `forecast:read`    | → últimas 50 `[ForecastSummary]`, de la más reciente a la más antigua; `seriesId` opcional |
 | GET    | `/api/v1/forecasts/{id}`      | `forecast:read`    | → `ForecastDetail` (404 si no existe) |
 
-Una ejecución corre de 1 a 4 métodos **distintos** sobre la misma serie y los evalúa en la misma ventana
+Una ejecución corre de 1 a 6 métodos **distintos** sobre la misma serie y los evalúa en la misma ventana
 (desde el primer periodo en que todos tienen pronóstico, como el Excel). Cada método lleva solo sus
 parámetros; los demás se ignoran:
 
@@ -135,8 +141,10 @@ Errores: `from` o `to` fuera de los meses cargados o `to` anterior a `from` → 
 
 `ForecastDetail`: `{ id, seriesId, productCode, productName, measure, unit, dataVersion, executedAt,
 executedBy, executedByUsername, periodFrom, periodTo, calculationVersion, evaluationStart, actuals: [{period, value}], methods: [MethodResult] }`.
-`MethodResult`: `{ method, periods, weights, alpha, beta, forecasts: [{period, forecast, actual}],
-nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, mapeExcluded }`.
+`MethodResult`: `{ method, periods, weights, alpha, beta, seasonLength, forecasts: [{period, forecast, actual,
+error, absolutePercentError}], nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed,
+mapeExcluded }`. `error` = real − pronóstico y `absolutePercentError` = |error| / real × 100 (nulo si el real
+es 0), como las columnas |Et| y |Et|/Dt del Excel.
 
 - `forecasts` trae todos los pronósticos que tienen real, también los anteriores a `evaluationStart`
   (el suavizamiento pronostica desde el mes 2); MAD y MAPE solo usan los meses desde `evaluationStart`.
@@ -152,57 +160,64 @@ nextForecast: {period, forecast, actual: null}, mad, mapePercent, pairsUsed, map
 `ForecastSummary`: `{ id, seriesId, productName, executedAt, executedBy, dataVersion, evaluationStart,
 methods: ["SIMPLE_MOVING_AVERAGE", ...] }`.
 
+**Vista previa** ([ADR 13](adr/0013-hoja-de-datos-en-vivo.md)): lo que la hoja muestra en vivo al cambiar un
+parámetro o un dato. Mismas reglas y errores que guardar; además, `actuals` (opcional, hasta 1200) reemplaza
+los datos guardados por los de la hoja sin guardar, y deben ser meses seguidos y sin repetir (si no, 400 con
+`errors[].field` `actuals`). `ForecastPreview`: `{ seriesId, productCode, productName, measure, periodicity,
+unit, dataVersion, draft, periodFrom, periodTo, evaluationStart, actuals, methods: [MethodResult],
+comparison: ExecutionComparison }`; `dataVersion` es nulo y `draft` verdadero cuando se usaron `actuals`.
+
 ### indicators (funcional)
 
 | Método | Ruta                                   | Permiso           | Respuesta |
 |--------|----------------------------------------|-------------------|-----------|
 | GET    | `/api/v1/indicators/executions/{id}`   | `indicators:read` | → `ExecutionComparison` (404 si la ejecución no existe) |
 
-Tabla comparativa de los métodos de una ejecución guardada ([ADR 07](adr/0007-reglas-de-calculo.md),
-preguntas 21 y 22):
+Tabla comparativa de los métodos de una ejecución guardada ([ADR 07](adr/0007-reglas-de-calculo.md) y
+[ADR 13](adr/0013-hoja-de-datos-en-vivo.md)); la vista previa trae la misma estructura con `executionId` nulo:
 
 ```json
 { "executionId": 7, "seriesId": 1, "evaluationFrom": "2020-06", "evaluationTo": "2022-06",
-  "mapeThresholdPercent": 10,
   "bestByMad": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"], "bestByMape": ["TREND_ADJUSTED_EXPONENTIAL_SMOOTHING"],
   "methods": [ { "method": "SIMPLE_MOVING_AVERAGE", "mad": 20.584, "mapePercent": 7.5031047806,
-                 "pairsUsed": 25, "mapeExcluded": 0, "bestByMad": false, "bestByMape": false,
-                 "status": "CUMPLE" }, ... ] }
+                 "pairsUsed": 25, "mapeExcluded": 0, "comparable": true,
+                 "bestByMad": false, "bestByMape": false }, ... ] }
 ```
 
 - `evaluationFrom`–`evaluationTo`: meses evaluados; nulos si ningún mes tuvo pronóstico de todos los
   métodos. Se muestran siempre junto a los indicadores, porque la ventana común depende de los métodos
   ejecutados juntos.
-- Ni el MAD ni el MAPE mandan: `bestByMad` y `bestByMape` señalan el menor de cada uno por separado.
+- `bestByMad` y `bestByMape` señalan el menor de cada uno por separado (pueden ser métodos distintos).
   Si varios coinciden a 6 decimales, todos quedan marcados. Un indicador nulo nunca es el mejor.
-- `status` frente al umbral del MAPE: `CUMPLE` (menor que el umbral), `NO_CUMPLE` (igual o mayor),
-  `SIN_EVALUAR` (MAPE no calculable) o `SIN_CRITERIO` (ejecución anterior a la fase 3, sin umbral).
-- El umbral sale de `MAPE_THRESHOLD_PERCENT` (10 por defecto) y se guarda en cada ejecución, así que
-  cambiarlo solo afecta a las ejecuciones nuevas. El MAD no tiene umbral propio.
+- `comparable` es falso en el estacional multiplicativo: aparece en la tabla pero no compite por el mejor,
+  porque se ajusta dentro de la muestra (ADR 12).
+- Sin estado de aceptación ni umbral (se quitaron en el ADR 13).
 
 Cualquier ruta no declarada en `SecurityConfig` se deniega (403 con sesión, 401 sin ella).
 
 ## Matriz de alcance por rol
 
 Definida en `RoleCode` y verificada por `RoleScopeTest`. Parte de la tabla 2 del documento de arquitectura,
-ajustada por el equipo el 2026-11-05 ([ADR 05](adr/0005-alcance-de-roles.md)): se eliminó el rol Supervisor de
-línea y la ejecución de pronósticos quedó solo para el administrador.
+ajustada el 2026-11-05 ([ADR 05](adr/0005-alcance-de-roles.md): sin rol Supervisor de línea) y el 2026-11-14
+([ADR 13](adr/0013-hoja-de-datos-en-vivo.md): solo el administrador edita la hoja y el analista guarda
+pronósticos).
 
 | Permiso            | ADMIN | PLANNER | ANALYST |
 |--------------------|:-----:|:-------:|:-------:|
 | `users:manage`     |  ✔    |         |         |
 | `history:read`     |  ✔    |   ✔     |   ✔     |
-| `history:write`    |  ✔    |         |   ✔     |
-| `forecast:execute` |  ✔    |         |         |
+| `history:write`    |  ✔    |         |         |
+| `forecast:execute` |  ✔    |         |   ✔     |
 | `forecast:read`    |  ✔    |   ✔     |   ✔     |
 | `indicators:read`  |  ✔    |   ✔     |   ✔     |
 | `forecast:export`  |  ✔    |   ✔     |         |
 
-- **Administrador:** todos los permisos; es el único que ejecuta pronósticos y administra cuentas.
-- **Planeador:** consulta históricos, pronósticos e indicadores; es quien extrae la información de los
-  pronósticos: exporta (`forecast:export`) a Excel, PDF, CSV e imagen, igual que el administrador. La
-  exportación se arma en el navegador con los datos de la API; el permiso decide quién ve los botones.
-- **Analista:** carga y consulta históricos; consulta pronósticos e indicadores.
-- Todos los que consultan ven todas las referencias (respuesta 24 de Industrial).
+- **Administrador:** todos los permisos; es el único que edita la hoja de datos y administra cuentas.
+- **Planeador:** consulta la hoja, recalcula en vivo, consulta pronósticos e indicadores y los exporta
+  (`forecast:export`) a Excel, PDF, CSV e imagen. La exportación se arma en el navegador con los datos de la
+  API; el permiso decide quién ve los botones.
+- **Analista:** consulta la hoja, recalcula en vivo y guarda pronósticos; no edita la hoja ni exporta.
+- Todos los que consultan ven todas las referencias (respuesta 24 de Industrial) y pueden recalcular sin
+  guardar (`POST /forecasts/preview` exige `forecast:read`).
 
 Pendiente con Industrial: umbral de intentos fallidos y procedimiento de recuperación de acceso.
